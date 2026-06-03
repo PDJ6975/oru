@@ -1,0 +1,23 @@
+model Habit {
+    id Int @id @default(autoincrement())
+    icon String
+    type HabitType
+    dailyGoal Decimal?
+    note String?
+    status HabitStatus
+    user User @relation(fields: [userId], references: [id])
+    userId Int
+    // scheduledDays
+    // creationDate
+    // startDate
+    // archivedDate
+}
+enum HabitType {
+    BOOLEAN
+    QUANTITY
+}
+enum HabitStatus {
+    ACTIVE
+    CONSOLIDATED
+    ARCHIVED
+}
