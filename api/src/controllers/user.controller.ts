@@ -2,12 +2,6 @@ import { NextFunction, Request, Response } from "express";
 import * as userService from "../services/user.service.js";
 import { User } from "../generated/prisma/client.js";
 
-const toDTO = (user: User) => {
-  return {
-    name: user.name,
-  };
-};
-
 export const createUser = async (
   req: Request,
   res: Response,
@@ -23,7 +17,7 @@ export const createUser = async (
   }
 };
 
-export const getUser = async (
+export const getUserInfo = async (
   req: Request,
   res: Response,
   next: NextFunction,
@@ -32,7 +26,7 @@ export const getUser = async (
     const userId = res.locals.userId;
     const user = await userService.getUserById(userId);
 
-    res.status(200).json({ user: toDTO(user!) });
+    res.status(200).json({ user });
   } catch (error) {
     next(error);
   }

@@ -1,0 +1,7 @@
+model Unit{
+    id Int @id @default(autoincrement())
+    name String
+    habits Habit[]
+    user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+    userId Int?
+}

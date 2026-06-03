@@ -5,8 +5,10 @@ model Habit {
     dailyGoal Decimal?
     note String?
     status HabitStatus
-    user User @relation(fields: [userId], references: [id])
+    unit Unit? @relation(fields: [unitId], references: [id], onDelete: SetNull)
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
     userId Int
+    unitId Int?
     // scheduledDays
     // creationDate
     // startDate

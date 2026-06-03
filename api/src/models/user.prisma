@@ -3,4 +3,5 @@ model User {
     sessions Session[]
     name String
     habits Habit[]
+    units Unit[]
 }

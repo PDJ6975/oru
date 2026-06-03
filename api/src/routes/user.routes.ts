@@ -8,4 +8,4 @@ import {
 export const userRoutes = Router();
 
 userRoutes.post("/users", validateCreateUser, userController.createUser);
-userRoutes.get("/users/me", verifyUser, userController.getUser);
+userRoutes.get("/users/me", verifyUser, userController.getUserInfo);
