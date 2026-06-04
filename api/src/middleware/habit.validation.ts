@@ -1,9 +1,13 @@
-import { body } from "express-validator";
+import { body, query } from "express-validator";
 import { HabitType, WeekDay } from "../generated/prisma/enums.js";
 import { NextFunction, Request, Response } from "express";
 import * as unitService from "../services/unit.service.js";
 import createError from "http-errors";
 import { validateRequest } from "./validateRequest.js";
+import {
+  HABIT_FILTER_SCHEDULE,
+  HABIT_FILTER_STATUS,
+} from "../types/habit.types.js";
 
 const iconValidation = body("icon")
   .isString()
@@ -66,9 +70,17 @@ const scheduledDaysValidation = body("scheduledDays")
   .isArray({ min: 1 })
   .withMessage("Scheduled days must be a non-empty array")
   .custom((days: string[]) => {
+    // All days must be valid week days
     if (!days.every((day) => Object.values(WeekDay).includes(day as WeekDay))) {
       throw new createError.BadRequest(
         "Scheduled days must be valid week days: MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY",
+      );
+    }
+    // No duplicate days allowed
+    const uniqueDays = new Set(days);
+    if (uniqueDays.size !== days.length) {
+      throw new createError.BadRequest(
+        "Scheduled days must not contain duplicates",
       );
     }
     return true;
@@ -102,6 +114,66 @@ export const validateUnitForHabit = async (
   }
 };
 
+const validateStatusQuery = query("status")
+  .optional()
+  .isString()
+  .withMessage("Status must be a string")
+  .trim()
+  .isIn(Object.values(HABIT_FILTER_STATUS))
+  .withMessage("Status must be either active, archived, or all");
+
+const validateFilterQuery = query("filter")
+  .optional()
+  .isString()
+  .withMessage("Filter must be a string")
+  .trim()
+  .isIn(Object.values(HABIT_FILTER_SCHEDULE))
+  .withMessage("Filter must be either all, scheduled, or rest");
+
+const validateDayQuery = query("day")
+  .optional()
+  .isString()
+  .withMessage("Day must be a string")
+  .trim()
+  .isIn(Object.values(WeekDay))
+  .withMessage(
+    "Day must be a valid week day: MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY",
+  );
+
+const validateQueriesCombinations = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const day = req.query.day;
+    const status = req.query.status ?? "all";
+    const filter = req.query.filter ?? "all";
+
+    if (status === "active" && filter !== "all" && !day) {
+      throw new createError.BadRequest(
+        "Day is required when filtering by active habits with a schedule",
+      );
+    }
+
+    if (status === "archived" && filter !== "all") {
+      throw new createError.BadRequest(
+        "Schedule filter is not allowed when filtering by archived habits",
+      );
+    }
+
+    if (status === "all" && filter !== "all") {
+      throw new createError.BadRequest(
+        "Schedule filter is not allowed when filtering by all habits",
+      );
+    }
+
+    next();
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const validateCreateHabit = [
   iconValidation,
   nameValidation,
@@ -110,5 +182,13 @@ export const validateCreateHabit = [
   noteValidation,
   scheduledDaysValidation,
   unitValidation,
+  validateRequest,
+];
+
+export const validateGetHabits = [
+  validateStatusQuery,
+  validateFilterQuery,
+  validateDayQuery,
+  validateQueriesCombinations,
   validateRequest,
 ];

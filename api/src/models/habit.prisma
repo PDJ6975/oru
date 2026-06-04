@@ -6,6 +6,7 @@ model Habit {
     dailyGoal Float?
     note String?
     status HabitStatus @default(ACTIVE)
+    isConsolidated Boolean @default(false)
     scheduledDays ScheduledDay[]
     unit Unit? @relation(fields: [unitId], references: [id], onDelete: SetNull)
     user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -21,6 +22,5 @@ enum HabitType {
 }
 enum HabitStatus {
     ACTIVE
-    CONSOLIDATED
     ARCHIVED
 }

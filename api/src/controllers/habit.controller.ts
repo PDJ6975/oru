@@ -1,6 +1,11 @@
 import { NextFunction, Request, Response } from "express";
 import * as habitService from "../services/habit.service.js";
-import { HabitInput } from "../types/habit.types.js";
+import {
+  HabitFilterSchedule,
+  HabitFilterStatus,
+  HabitInput,
+} from "../types/habit.types.js";
+import { WeekDay } from "../generated/prisma/enums.js";
 
 export const getUserHabits = async (
   req: Request,
@@ -9,7 +14,15 @@ export const getUserHabits = async (
 ) => {
   try {
     const userId = res.locals.userId;
-    const habits = await habitService.getUserHabits(userId);
+    const status = (req.query.status ?? "all") as HabitFilterStatus;
+    const filter = (req.query.filter ?? "all") as HabitFilterSchedule;
+    const day = req.query.day as WeekDay;
+    const habits = await habitService.getUserHabits(
+      userId,
+      status,
+      filter,
+      day,
+    );
     res.status(200).json(habits);
   } catch (error) {
     next(error);
