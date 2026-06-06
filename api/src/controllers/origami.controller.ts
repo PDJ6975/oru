@@ -14,3 +14,17 @@ export const getOrigami = async (
     next(error);
   }
 };
+
+export const nextPhase = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = res.locals.userId;
+    const origami = await origamiService.nextPhase(userId);
+    res.status(204).json(origami);
+  } catch (error) {
+    next(error);
+  }
+};

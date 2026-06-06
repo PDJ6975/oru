@@ -42,7 +42,14 @@ export const getActiveAssignment = async (userId: number) => {
   };
 };
 
-const getNextThreshold = (totalPhases: number, revealedPhase: number) => {
+export const getActiveAssignmentRaw = async (userId: number) => {
+  return await origamiRepository.getActiveAssignment(userId);
+};
+
+export const getNextThreshold = (
+  totalPhases: number,
+  revealedPhase: number,
+) => {
   const nextPhase = revealedPhase + 1;
 
   if (nextPhase >= totalPhases) {
@@ -139,4 +146,11 @@ const removeDailyBonus = async (
     userService.setDailyBonus(assignment.userId, false),
     origamiRepository.updateProgress(assignment.id, newProgress),
   ]);
+};
+
+export const nextPhase = async (userId: number) => {
+  const assignment = await origamiRepository.getActiveAssignment(userId);
+  const newPhase = assignment!.revealedPhase + 1;
+  await origamiRepository.updateAssignment(assignment!.id, newPhase);
+  return getActiveAssignment(userId);
 };

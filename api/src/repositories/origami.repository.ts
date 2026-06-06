@@ -1,3 +1,4 @@
+import { startOfDay } from "date-fns";
 import { prisma } from "../db/prisma.js";
 
 export const getActiveAssignment = async (userId: number) => {
@@ -36,5 +37,18 @@ export const updateProgress = async (
   return prisma.assignment.update({
     where: { id: assignmentId },
     data: { progress: newProgress },
+  });
+};
+
+export const updateAssignment = async (
+  assignmentId: number,
+  revealedPhase: number,
+) => {
+  return prisma.assignment.update({
+    where: { id: assignmentId },
+    data: {
+      revealedPhase,
+    },
+    include: { origami: true },
   });
 };
