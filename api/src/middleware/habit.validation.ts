@@ -9,6 +9,7 @@ import {
   HABIT_FILTER_STATUS,
 } from "../types/habit.types.js";
 import * as habitService from "../services/habit.service.js";
+import { endOfDay, startOfDay } from "date-fns";
 
 const iconValidation = (optional = false) => {
   const validator = body("icon");
@@ -92,6 +93,19 @@ const typeValidation = body("type")
   .trim()
   .isIn(Object.values(HabitType))
   .withMessage("Type must be either BOOLEAN or QUANTITY");
+
+const amountValidation = body("amount")
+  .optional()
+  .isNumeric()
+  .withMessage("Amount must be a number")
+  .custom((value) => {
+    if (value < 0 || value >= 100000) {
+      throw new createError.BadRequest(
+        "Amount must be a positive number less than 100000",
+      );
+    }
+    return true;
+  });
 
 const ensureTypeAndDailyGoalConsistency = (
   type: HabitType,
@@ -260,28 +274,6 @@ export const validateHabitOwner = async (
   }
 };
 
-export const validateHabitCanBeConsolidated = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
-  try {
-    const habitId = Number(req.params.habitId);
-    const habit = await habitService.getHabitById(habitId);
-
-    if (habit!.status === "ARCHIVED") {
-      throw new createError.BadRequest("Cannot consolidate archived habit");
-    }
-
-    if (habit!.isConsolidated) {
-      throw new createError.BadRequest("Habit is already consolidated");
-    }
-    next();
-  } catch (error) {
-    next(error);
-  }
-};
-
 export const validateHabitCanBeArchived = async (
   req: Request,
   res: Response,
@@ -298,6 +290,33 @@ export const validateHabitCanBeArchived = async (
     if (!habit!.isConsolidated) {
       throw new createError.BadRequest(
         "Only consolidated habits can be archived",
+      );
+    }
+    next();
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const validateAmountWithHabitType = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const habitId = Number(req.params.habitId);
+    const amount = req.body.amount;
+    const habit = await habitService.getHabitById(habitId);
+
+    if (habit!.type === HabitType.BOOLEAN && amount !== undefined) {
+      throw new createError.BadRequest(
+        "Amount must not be provided for BOOLEAN type habits",
+      );
+    }
+
+    if (habit!.type === HabitType.QUANTITY && amount === undefined) {
+      throw new createError.BadRequest(
+        "Amount must be provided for QUANTITY type habits",
       );
     }
     next();
@@ -351,16 +370,17 @@ export const validateDeleteHabit = [
   validateHabitOwner,
 ];
 
-export const validateConsolidateHabit = [
-  validateHabitIdParam,
-  validateRequest,
-  validateHabitOwner,
-  validateHabitCanBeConsolidated,
-];
-
 export const validateArchiveHabit = [
   validateHabitIdParam,
   validateRequest,
   validateHabitOwner,
   validateHabitCanBeArchived,
+];
+
+export const validateToggleHabit = [
+  validateHabitIdParam,
+  amountValidation,
+  validateRequest,
+  validateHabitOwner,
+  validateAmountWithHabitType,
 ];

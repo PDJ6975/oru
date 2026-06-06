@@ -7,6 +7,9 @@ import {
   HabitUpdateInput,
 } from "../types/habit.types.js";
 import { toWeekDay } from "../utils/weekday.js";
+import { getComplianceForDay } from "../utils/today.compliances.js";
+import { HabitType, Prisma } from "../generated/prisma/client.js";
+import { bootEnv } from "../config/bootConfig.js";
 
 export const getUserHabits = async (
   userId: number,
@@ -16,8 +19,6 @@ export const getUserHabits = async (
   const today = toWeekDay(startOfDay(new Date()));
   return await habitRepository.getUserHabits(userId, status, filter, today);
 };
-
-export const getUserHabitsWithCompliances = async (userId: number) => {};
 
 export const getHabitById = async (habitId: number) => {
   return await habitRepository.getHabitById(habitId);
@@ -68,4 +69,53 @@ export const getUserHabitsWithCompliancesInRange = async (
   to: Date,
 ) => {
   return await habitRepository.getUserHabitsWithCompliances(userId, from, to);
+};
+
+export const getHabitsWithCompletedCompliances = async (habitId: number) => {
+  return await habitRepository.getHabitsWithCompletedCompliances(habitId);
+};
+
+export const toggleHabit = async (habitId: number, amount: number) => {
+  const today = startOfDay(new Date());
+  const habit =
+    await habitRepository.getHabitsWithCompletedCompliances(habitId);
+
+  const todayCompliance = getComplianceForDay(habit!.compliances, today);
+
+  if (habit!.type === HabitType.BOOLEAN) {
+    if (!todayCompliance) {
+      await habitRepository.createCompliance(habitId, today, true);
+    } else {
+      await habitRepository.deleteCompliance(habitId, today);
+    }
+  } else if (habit!.type === HabitType.QUANTITY) {
+    if (amount > 0) {
+      const isCompleted = amount >= habit!.dailyGoal!;
+      await habitRepository.upsertCompliance(
+        habitId,
+        today,
+        isCompleted,
+        amount,
+      );
+    } else {
+      // Sin cantidad se elimina el compliance del día
+      await habitRepository.deleteCompliance(habitId, today); // si no existe no hace nada
+    }
+  }
+
+  // Reevaluar la consolidación según el total de cumplimientos
+  const updatedHabit =
+    await habitRepository.getHabitsWithCompletedCompliances(habitId);
+  const completedCount = updatedHabit!.compliances.length;
+  const threshold = bootEnv.CONSOLIDATION_THRESHOLD_DAYS;
+  let reevaluatedHabit;
+
+  if (!habit!.isConsolidated && completedCount >= threshold) {
+    reevaluatedHabit = await habitRepository.consolidateHabit(habitId);
+    // si se consolida por 66a vez y se deshace la consolidación
+  } else if (habit!.isConsolidated && completedCount < threshold) {
+    reevaluatedHabit = await habitRepository.deconsolidateHabit(habitId);
+  }
+
+  return reevaluatedHabit ?? updatedHabit;
 };

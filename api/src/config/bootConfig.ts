@@ -16,4 +16,8 @@ export const bootEnv = {
 
   // Bussiness Rules
   MAX_UNITS_PER_USER: parseInt(process.env.MAX_UNITS_PER_USER || "20", 10),
+  CONSOLIDATION_THRESHOLD_DAYS: parseInt(
+    process.env.CONSOLIDATION_THRESHOLD_DAYS || "66",
+    10,
+  ),
 };

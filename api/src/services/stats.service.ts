@@ -1,4 +1,4 @@
-import { addDays, isSameDay, startOfDay } from "date-fns";
+import { addDays, startOfDay } from "date-fns";
 import * as userService from "./user.service.js";
 import * as habitService from "./habit.service.js";
 import * as statsRepository from "../repositories/stats.repository.js";
@@ -6,8 +6,9 @@ import { toDtoStats } from "../utils/stats.mapper.js";
 import { toWeekDay } from "../utils/weekday.js";
 import { HabitStats, Prisma, UserStats } from "../generated/prisma/client.js";
 import { HabitStatsComp, UserStatsComp } from "../types/stats.types.js";
+import { getComplianceForDay } from "../utils/today.compliances.js";
 
-type HabitWithData = Prisma.HabitGetPayload<{
+export type HabitWithData = Prisma.HabitGetPayload<{
   include: { scheduledDays: true; compliances: true };
 }>;
 
@@ -142,7 +143,7 @@ const accumulateRange = (
 
       dayScheduled++;
       const h = getOrInitHabitStatsAcc(habitStatsAcc, habit, year, dbHabitMap);
-      const compliance = getComplianceForDay(habit, day);
+      const compliance = getComplianceForDay(habit.compliances, day);
 
       // Acumulación de cantidad: cuenta toda actividad registrada, completada o no
       if (compliance?.recordedAmount != null) {
@@ -296,6 +297,3 @@ const getOrInitUserStatsAcc = (
   }
   return acc.get(year)!;
 };
-
-const getComplianceForDay = (habit: HabitWithData, day: Date) =>
-  habit.compliances.find((compliance) => isSameDay(compliance.date, day));

@@ -4,9 +4,7 @@ import {
   HabitFilterSchedule,
   HabitFilterStatus,
   HabitCreationInput,
-  HabitUpdateInput,
 } from "../types/habit.types.js";
-import { WeekDay } from "../generated/prisma/enums.js";
 import { toHabitUpdateInput } from "../utils/habit.mapper.js";
 
 export const getUserHabits = async (
@@ -96,20 +94,6 @@ export const deleteHabit = async (
   }
 };
 
-export const consolidateHabit = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
-  try {
-    const habitId = Number(req.params.habitId);
-    await habitService.consolidateHabit(habitId);
-    return res.status(204).send();
-  } catch (error) {
-    next(error);
-  }
-};
-
 export const archiveHabit = async (
   req: Request,
   res: Response,
@@ -119,6 +103,22 @@ export const archiveHabit = async (
     const habitId = Number(req.params.habitId);
     await habitService.archiveHabit(habitId);
     return res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const toggleHabit = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const habitId = Number(req.params.habitId);
+    const { amount } = req.body;
+
+    const updatedHabit = await habitService.toggleHabit(habitId, amount);
+    res.status(200).json(updatedHabit);
   } catch (error) {
     next(error);
   }

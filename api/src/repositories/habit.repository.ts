@@ -44,6 +44,7 @@ export const getUserHabits = async (
     where,
     include: {
       scheduledDays: true,
+      compliances: true,
     },
   });
 };
@@ -113,6 +114,15 @@ export const consolidateHabit = async (habitId: number) => {
   });
 };
 
+export const deconsolidateHabit = async (habitId: number) => {
+  return await prisma.habit.update({
+    where: { id: habitId },
+    data: {
+      isConsolidated: false,
+    },
+  });
+};
+
 export const archiveHabit = async (habitId: number) => {
   return await prisma.habit.update({
     where: { id: habitId },
@@ -150,5 +160,65 @@ export const getUserHabitsWithCompliances = async (
         },
       },
     },
+  });
+};
+
+export const getHabitsWithCompletedCompliances = async (habitId: number) => {
+  return await prisma.habit.findUnique({
+    where: { id: habitId },
+    include: {
+      compliances: {
+        where: {
+          isCompleted: true,
+        },
+      },
+    },
+  });
+};
+
+export const createCompliance = async (
+  habitId: number,
+  date: Date,
+  isCompleted: boolean,
+) => {
+  return await prisma.compliance.create({
+    data: {
+      habitId,
+      date,
+      isCompleted,
+    },
+  });
+};
+
+export const upsertCompliance = async (
+  habitId: number,
+  date: Date,
+  isCompleted: boolean,
+  recordedAmount: number,
+) => {
+  return await prisma.compliance.upsert({
+    where: {
+      habitId_date: {
+        habitId,
+        date,
+      },
+    },
+    update: {
+      isCompleted,
+      recordedAmount,
+    },
+    create: {
+      habitId,
+      date,
+      isCompleted,
+      recordedAmount,
+    },
+  });
+};
+
+export const deleteCompliance = async (habitId: number, day?: Date) => {
+  return await prisma.compliance.deleteMany({
+    // deleteMany para evitar error si no hay compliance esa fecha (puede pasar con Quantity)
+    where: { habitId, date: day },
   });
 };

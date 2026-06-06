@@ -3,11 +3,11 @@ import * as habitController from "../controllers/habit.controller.js";
 import { verifyUser } from "../middleware/user.validation.js";
 import {
   validateArchiveHabit,
-  validateConsolidateHabit,
   validateCreateHabit,
   validateDeleteHabit,
   validateGetHabitById,
   validateGetHabits,
+  validateToggleHabit,
   validateUnitForHabit,
   validateUpdateHabit,
 } from "../middleware/habit.validation.js";
@@ -49,15 +49,15 @@ habitRoutes.delete(
 );
 
 habitRoutes.post(
-  "/habits/:habitId/consolidate",
-  verifyUser,
-  validateConsolidateHabit,
-  habitController.consolidateHabit,
-);
-
-habitRoutes.post(
   "/habits/:habitId/archive",
   verifyUser,
   validateArchiveHabit,
   habitController.archiveHabit,
+);
+
+habitRoutes.post(
+  "/habits/:habitId/toggle",
+  verifyUser,
+  validateToggleHabit,
+  habitController.toggleHabit,
 );
