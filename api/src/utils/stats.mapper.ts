@@ -24,6 +24,7 @@ export const toDtoStats = (
         habitName: stat.habitName,
         habitIcon: stat.habitIcon,
         habitType: stat.habitType,
+        habitStatus: stat.habitStatus,
         currentStreak: stat.currentStreak,
         bestStreak: stat.bestStreak,
         totalCompletions: stat.totalCompletions,
