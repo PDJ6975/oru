@@ -26,3 +26,7 @@ export const updateLastComputedDay = async (
 ) => {
   return await userRepository.updateLastComputedDay(userId, lastComputedDay);
 };
+
+export const setDailyBonus = async (userId: number, applied: boolean) => {
+  return await userRepository.setDailyBonus(userId, applied);
+};

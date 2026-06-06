@@ -20,4 +20,5 @@ export const bootEnv = {
     process.env.CONSOLIDATION_THRESHOLD_DAYS || "66",
     10,
   ),
+  DAILY_BONUS_PROGRESS: parseInt(process.env.DAILY_BONUS_PROGRESS || "3", 10),
 };

@@ -3,6 +3,7 @@ model User {
     sessions Session[]
     name String
     lastComputedDay DateTime?
+    dailyBonusAplied Boolean @default(false)
     stats UserStats[]
     habits Habit[]
     units Unit[]

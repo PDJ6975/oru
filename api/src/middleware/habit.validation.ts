@@ -10,6 +10,8 @@ import {
 } from "../types/habit.types.js";
 import * as habitService from "../services/habit.service.js";
 import { endOfDay, startOfDay } from "date-fns";
+import { getComplianceForDay } from "../utils/today.compliances.js";
+import { toWeekDay } from "../utils/weekday.js";
 
 const iconValidation = (optional = false) => {
   const validator = body("icon");
@@ -325,6 +327,36 @@ export const validateAmountWithHabitType = async (
   }
 };
 
+export const validateHabitStatusForToggle = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const habitId = Number(req.params.habitId);
+    const habit = await habitService.getHabitById(habitId);
+
+    if (habit!.status === "ARCHIVED") {
+      throw new createError.BadRequest("Cannot toggle an archived habit");
+    }
+
+    const today = toWeekDay(startOfDay(new Date()));
+    const isScheduledToday = habit!.scheduledDays.some(
+      (sd) => sd.day === today,
+    );
+
+    if (!isScheduledToday) {
+      throw new createError.BadRequest(
+        "Can only toggle habits scheduled for today",
+      );
+    }
+
+    next();
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const validateCreateHabit = [
   iconValidation(),
   nameValidation(),
@@ -383,4 +415,5 @@ export const validateToggleHabit = [
   validateRequest,
   validateHabitOwner,
   validateAmountWithHabitType,
+  validateHabitStatusForToggle,
 ];

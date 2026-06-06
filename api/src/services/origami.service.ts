@@ -1,5 +1,11 @@
 import * as origamiRepository from "../repositories/origami.repository.js";
 import createError from "http-errors";
+import * as userService from "./user.service.js";
+import * as habitService from "./habit.service.js";
+import { startOfDay } from "date-fns";
+import { bootEnv } from "../config/bootConfig.js";
+import { Prisma } from "../generated/prisma/client.js";
+import { getComplianceForDay } from "../utils/today.compliances.js";
 
 export const getActiveAssignment = async (userId: number) => {
   // Obtener asignación con fecha de completado a null (origami activo)
@@ -73,4 +79,64 @@ export const assignOrigami = async (userId: number) => {
 
 const getUnassignedOrigamis = async (userId: number) => {
   return await origamiRepository.getUnassignedOrigamis(userId);
+};
+
+export const evaluateProgress = async (userId: number) => {
+  const user = await userService.getUserById(userId);
+  const assignment = await origamiRepository.getActiveAssignment(userId);
+  if (!assignment) return; // No hay asignación activa (usuario con todos los origamis completados), no se hace nada
+  const activeHabits = await habitService.getUserHabits(
+    userId,
+    "active",
+    "scheduled",
+  );
+  const today = startOfDay(new Date());
+  const numberOfActiveHabits = activeHabits.length;
+  let numberOfCompletedHabits = activeHabits.filter(
+    (habit) => getComplianceForDay(habit.compliances, today)?.isCompleted,
+  ).length;
+
+  // Si se completan todos los hábitos activos del día se aplica el bonus
+  if (
+    numberOfCompletedHabits === numberOfActiveHabits &&
+    !user!.dailyBonusAplied
+  )
+    await applyDailyBonus(assignment);
+  // Si se descompleta uno de los hábitos activos del día se quita el bonus
+  else if (
+    numberOfCompletedHabits < numberOfActiveHabits &&
+    user!.dailyBonusAplied
+  )
+    await removeDailyBonus(assignment);
+};
+
+const applyDailyBonus = async (
+  assignment: Prisma.AssignmentGetPayload<{ include: { origami: true } }>,
+) => {
+  const bonus = bootEnv.DAILY_BONUS_PROGRESS;
+  const nextThreshold = getNextThreshold(
+    assignment!.origami.phases,
+    assignment!.revealedPhase,
+  );
+  const newProgress = Math.min(
+    assignment!.progress + bonus,
+    nextThreshold ?? 100,
+  );
+
+  await Promise.all([
+    userService.setDailyBonus(assignment.userId, true),
+    origamiRepository.updateProgress(assignment.id, newProgress),
+  ]);
+};
+
+const removeDailyBonus = async (
+  assignment: Prisma.AssignmentGetPayload<{ include: { origami: true } }>,
+) => {
+  const bonus = bootEnv.DAILY_BONUS_PROGRESS;
+  const newProgress = Math.max(assignment!.progress - bonus, 0);
+
+  await Promise.all([
+    userService.setDailyBonus(assignment.userId, false),
+    origamiRepository.updateProgress(assignment.id, newProgress),
+  ]);
 };

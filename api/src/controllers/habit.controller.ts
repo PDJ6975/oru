@@ -116,8 +116,13 @@ export const toggleHabit = async (
   try {
     const habitId = Number(req.params.habitId);
     const { amount } = req.body;
+    const userId = res.locals.userId;
 
-    const updatedHabit = await habitService.toggleHabit(habitId, amount);
+    const updatedHabit = await habitService.toggleHabit(
+      userId,
+      habitId,
+      amount,
+    );
     res.status(200).json(updatedHabit);
   } catch (error) {
     next(error);

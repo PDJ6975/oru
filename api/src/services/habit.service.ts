@@ -8,8 +8,9 @@ import {
 } from "../types/habit.types.js";
 import { toWeekDay } from "../utils/weekday.js";
 import { getComplianceForDay } from "../utils/today.compliances.js";
-import { HabitType, Prisma } from "../generated/prisma/client.js";
+import { HabitType } from "../generated/prisma/client.js";
 import { bootEnv } from "../config/bootConfig.js";
+import * as origamiService from "./origami.service.js";
 
 export const getUserHabits = async (
   userId: number,
@@ -75,7 +76,11 @@ export const getHabitsWithCompletedCompliances = async (habitId: number) => {
   return await habitRepository.getHabitsWithCompletedCompliances(habitId);
 };
 
-export const toggleHabit = async (habitId: number, amount: number) => {
+export const toggleHabit = async (
+  userId: number,
+  habitId: number,
+  amount: number,
+) => {
   const today = startOfDay(new Date());
   const habit =
     await habitRepository.getHabitsWithCompletedCompliances(habitId);
@@ -116,6 +121,9 @@ export const toggleHabit = async (habitId: number, amount: number) => {
   } else if (habit!.isConsolidated && completedCount < threshold) {
     reevaluatedHabit = await habitRepository.deconsolidateHabit(habitId);
   }
+
+  // Evaluar el estado del progreso
+  await origamiService.evaluateProgress(userId);
 
   return reevaluatedHabit ?? updatedHabit;
 };

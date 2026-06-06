@@ -28,3 +28,13 @@ export const createAssignment = async (userId: number, origamiId: number) => {
     include: { origami: true },
   });
 };
+
+export const updateProgress = async (
+  assignmentId: number,
+  newProgress: number,
+) => {
+  return prisma.assignment.update({
+    where: { id: assignmentId },
+    data: { progress: newProgress },
+  });
+};

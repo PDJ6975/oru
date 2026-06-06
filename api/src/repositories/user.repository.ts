@@ -42,3 +42,10 @@ export const updateLastComputedDay = async (
     data: { lastComputedDay },
   });
 };
+
+export const setDailyBonus = async (userId: number, applied: boolean) => {
+  return await prisma.user.update({
+    where: { id: userId },
+    data: { dailyBonusAplied: applied },
+  });
+};
