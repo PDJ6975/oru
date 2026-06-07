@@ -15,6 +15,8 @@ struct HabitDto: Decodable, Identifiable {
     let archivedAt: Date?
     let scheduledDays: [ScheduledDayDto]
     let compliances: [ComplianceDto]
+
+    static let consolidationThreshold = 66
 }
 
 enum HabitType: String, Decodable {

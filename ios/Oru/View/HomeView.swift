@@ -14,8 +14,8 @@ struct HomeView: View {
     @State private var showNextAlert = false
     @State private var trayDetent: HomeTrayDetent = .peek
     @State private var showCreateForm = false
-    @State private var habitToEdit: Habit?
-    @State private var habitToDelete: Habit?
+    @State private var habitToEdit: HabitDto?
+    @State private var habitToDelete: HabitDto?
 
     private var todayHabits: [HabitDto] { homeVM.todayHabits }
 
@@ -357,7 +357,7 @@ struct HomeView: View {
 
 private struct TodayHabitRow: View {
 
-    let habit: Habit
+    let habit: HabitDto
     var viewModel: HabitViewModel
 
     var body: some View {
@@ -374,7 +374,7 @@ private struct TodayHabitRow: View {
 
 private struct BooleanHabitRow: View {
 
-    let habit: Habit
+    let habit: HabitDto
     var viewModel: HabitViewModel
 
     private var isCompleted: Bool {
@@ -426,7 +426,7 @@ private struct BooleanHabitRow: View {
 
 private struct QuantityHabitRow: View {
 
-    let habit: Habit
+    let habit: HabitDto
     var viewModel: HabitViewModel
 
     @State private var isEntering = false
@@ -556,8 +556,8 @@ private struct QuantityHabitRow: View {
 
 private struct HabitRow: View {
 
-    let habit: Habit
-    let today: Habit.Weekday
+    let habit: HabitDto
+    let today: WeekDay
 
     var body: some View {
         HStack(spacing: 8) {
@@ -572,7 +572,7 @@ private struct HabitRow: View {
             Spacer()
 
             HStack(spacing: 6) {
-                ForEach(Habit.Weekday.allCases, id: \.self) { day in
+                ForEach(WeekDay.allCases, id: \.self) { day in
                     Text(day.shortLabel)
                         .font(.system(size: 12, weight: .medium, design: .rounded))
                         .foregroundStyle(dayColor(day: day))
@@ -582,8 +582,8 @@ private struct HabitRow: View {
         .padding(.vertical, 4)
     }
 
-    private func dayColor(day: Habit.Weekday) -> Color {
-        guard habit.scheduledDays.contains(day) else {
+    private func dayColor(day: WeekDay) -> Color {
+        guard habit.scheduledDays.contains(where: { $0.day == day }) else {
             return .secondary.opacity(0.3)
         }
         return day == today ? .oruPrimary : .primary

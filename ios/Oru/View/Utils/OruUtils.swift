@@ -42,6 +42,20 @@ extension Habit.Weekday {
     }
 }
 
+extension WeekDay {
+    var shortLabel: String {
+        switch self {
+        case .monday: "L"
+        case .tuesday: "M"
+        case .wednesday: "X"
+        case .thursday: "J"
+        case .friday: "V"
+        case .saturday: "S"
+        case .sunday: "D"
+        }
+    }
+}
+
 // MARK: - Double Formatting
 
 extension Double {

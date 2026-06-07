@@ -72,9 +72,9 @@ class HabitViewModel {
         habit.compliances.first { Calendar.current.isDateInToday($0.date) }
     }
 
-    func consolidationProgress(for habit: Habit) -> Double {
-        let completedDays = habit.compliances.filter(\.completed).count
-        return min(Double(completedDays) / Double(Habit.consolidationThreshold), 1.0)
+    func consolidationProgress(for habit: HabitDto) -> Double {
+        let completedDays = habit.compliances.filter(\.isCompleted).count
+        return min(Double(completedDays) / Double(HabitDto.consolidationThreshold), 1.0)
     }
 
     func currentWeekday() -> Habit.Weekday {
