@@ -58,10 +58,27 @@ struct MainTabView: View {
             }
             if habitVM == nil {
                 let hvm = HabitViewModel(
-                    repository: HabitRepository(modelContext: modelContext)
+                    repository: HabitRepository(modelContext: modelContext),
+                    habitService: dependencies.habitService,
+                    unitService: dependencies.unitService
                 )
                 hvm.onHabitChanged = { [weak gamificationVM] allCompleted in
                     gamificationVM?.updateDailyProgress(allCompleted: allCompleted)
+                }
+                hvm.onHabitCreated = { [weak homeVM] habit in
+                    homeVM?.addCreatedHabit(habit)
+                }
+                hvm.onHabitDeleted = { [weak homeVM] habit in
+                    homeVM?.removeHabit(habit)
+                }
+                hvm.onHabitUpdated = { [weak homeVM] habit in
+                    homeVM?.updateHabit(habit)
+                }
+                hvm.onHabitArchived = { [weak homeVM] habit in
+                    homeVM?.removeHabit(habit)
+                }
+                hvm.onHabitToggled = { [weak homeVM] habit in
+                    homeVM?.replaceHabit(habit)
                 }
                 habitVM = hvm
             }

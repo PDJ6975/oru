@@ -61,4 +61,37 @@ final class HomeViewModel {
             pausedHabits = []
         }
     }
+
+    func addCreatedHabit(_ habit: HabitDto) {
+        let today = WeekDay.today
+        if habit.scheduledDays.contains(where: { $0.day == today }) {
+            todayHabits.append(habit)
+        } else {
+            pausedHabits.append(habit)
+        }
+    }
+
+    func removeHabit(_ habit: HabitDto) {
+        todayHabits.removeAll { $0.id == habit.id }
+        pausedHabits.removeAll { $0.id == habit.id }
+    }
+
+    func updateHabit(_ habit: HabitDto) {
+        removeHabit(habit)
+        let today = WeekDay.today
+        if habit.scheduledDays.contains(where: { $0.day == today }) {
+            todayHabits.append(habit)
+        } else {
+            pausedHabits.append(habit)
+        }
+    }
+
+    /// Reemplaza un hábito en su sitio sin reordenar tras un toggle.
+    func replaceHabit(_ habit: HabitDto) {
+        if let index = todayHabits.firstIndex(where: { $0.id == habit.id }) {
+            todayHabits[index] = habit
+        } else if let index = pausedHabits.firstIndex(where: { $0.id == habit.id }) {
+            pausedHabits[index] = habit
+        }
+    }
 }

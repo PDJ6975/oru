@@ -4,7 +4,7 @@ import SwiftData
 struct HomeView: View {
 
     @Binding var gamificationVM: GamificationViewModel?
-    var habitVM: HabitViewModel
+    @Bindable var habitVM: HabitViewModel
     @Bindable var homeVM: HomeViewModel
     var illustrationOverride: String?
 
@@ -63,6 +63,9 @@ struct HomeView: View {
             isPresented: $homeVM.connectionErrorPresented,
             onRetry: { Task { await homeVM.load() } }
         )
+        .connectionErrorAlert(
+            isPresented: $habitVM.connectionErrorPresented
+        )
         .overlay(alignment: .topLeading) {
             Text("Hola, \(homeVM.userName)!")
                 .font(.system(size: 24, weight: .regular, design: .rounded))
@@ -88,12 +91,25 @@ struct HomeView: View {
         ) {
             Button("Eliminar", role: .destructive) {
                 if let habit = habitToDelete {
-                    habitVM.deleteHabit(habit)
+                    Task {
+                        await habitVM.deleteHabit(habit)
+                    }
                 }
             }
             Button("Cancelar", role: .cancel) { }
         } message: {
             Text("Se eliminará el hábito y todo su historial. Esta acción no se puede deshacer.")
+        }
+        .alert(
+            "Error",
+            isPresented: Binding(
+                get: { habitVM.lastError != nil },
+                set: { if !$0 { habitVM.lastError = nil } }
+            )
+        ) {
+            Button("Aceptar", role: .cancel) { }
+        } message: {
+            Text(habitVM.lastError ?? "")
         }
         .alert(
             "¡Hábito consolidado! 🎉",
@@ -215,9 +231,11 @@ struct HomeView: View {
                                 Label("Editar", systemImage: "pencil")
                             }
                             .tint(.oruPrimary)
-                            if habit.status == .consolidated {
+                            if habit.isConsolidated {
                                 Button {
-                                    habitVM.archiveHabit(habit)
+                                    Task {
+                                        await habitVM.archiveHabit(habit)
+                                    }
                                 } label: {
                                     Label("Archivar", systemImage: "archivebox")
                                 }
@@ -238,7 +256,7 @@ struct HomeView: View {
     private var pausedSection: some View {
         Section {
             ForEach(otherHabits) { habit in
-                HabitRow(habit: habit, today: habitVM.currentWeekday())
+                HabitRow(habit: habit, today: habitVM.currentWeekDay())
                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                         Button {
                             habitToDelete = habit
@@ -378,13 +396,13 @@ private struct BooleanHabitRow: View {
     var viewModel: HabitViewModel
 
     private var isCompleted: Bool {
-        viewModel.todayCompliance(for: habit)?.completed ?? false
+        viewModel.todayCompliance(for: habit)?.isCompleted ?? false
     }
 
     var body: some View {
         HStack(spacing: 12) {
             Button {
-                viewModel.toggleBoolean(for: habit)
+                Task { await viewModel.toggleBoolean(for: habit) }
             } label: {
                 Image(systemName: isCompleted ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 26))
@@ -433,7 +451,7 @@ private struct QuantityHabitRow: View {
     @State private var inputText = ""
     @FocusState private var isFocused: Bool
 
-    private var todayCompliance: Compliance? {
+    private var todayCompliance: ComplianceDto? {
         viewModel.todayCompliance(for: habit)
     }
 
@@ -442,7 +460,7 @@ private struct QuantityHabitRow: View {
     }
 
     private var isCompleted: Bool {
-        todayCompliance?.completed ?? false
+        todayCompliance?.isCompleted ?? false
     }
 
     var body: some View {
@@ -526,7 +544,7 @@ private struct QuantityHabitRow: View {
     private func save() {
         let normalized = inputText.replacingOccurrences(of: ",", with: ".")
         let value = Double(normalized) ?? 0
-        viewModel.recordAmount(value, for: habit)
+        Task { await viewModel.recordAmount(value, for: habit) }
         isEntering = false
         isFocused = false
     }
@@ -590,37 +608,76 @@ private struct HabitRow: View {
     }
 }
 
+// MARK: - Weekday Short Label
+
+extension WeekDay {
+    var shortLabel: String {
+        switch self {
+        case .monday: "L"
+        case .tuesday: "M"
+        case .wednesday: "X"
+        case .thursday: "J"
+        case .friday: "V"
+        case .saturday: "S"
+        case .sunday: "D"
+        }
+    }
+}
+
 // MARK: - Preview
 
 #Preview(traits: .sampleData) {
     @Previewable @Environment(\.modelContext) var context
-    @Previewable @State var gamificationVM: GamificationViewModel?
+    HomePreview(context: context)
+}
 
-    NavigationStack {
-        HomeView(
-            gamificationVM: $gamificationVM,
-            habitVM: HabitViewModel(
-                repository: HabitRepository(modelContext: context)
+/// Contenedor de la preview: construye los view models a partir del `context`
+/// inyectado en su `init` (no se puede hacer en el default de un `@Previewable`).
+private struct HomePreview: View {
+    private let context: ModelContext
+    @State private var gamificationVM: GamificationViewModel?
+    @State private var habitVM: HabitViewModel
+
+    init(context: ModelContext) {
+        self.context = context
+        let client = APIClient(tokenStore: TokenStore())
+        _habitVM = State(initialValue: HabitViewModel(
+            repository: HabitRepository(modelContext: context),
+            habitService: HabitService(client: client),
+            unitService: UnitService(client: client)
+        ))
+    }
+
+    var body: some View {
+        let client = APIClient(tokenStore: TokenStore())
+        NavigationStack {
+            HomeView(
+                gamificationVM: $gamificationVM,
+                habitVM: habitVM,
+                homeVM: HomeViewModel(
+                    userService: UserService(client: client),
+                    habitService: HabitService(client: client)
+                )
             )
-        )
-        .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                Button {
-                    guard let gvm = gamificationVM,
-                          let userOrigami = gvm.currentOrigami else { return }
-                    userOrigami.progressPercentage = gvm.nextPhaseThreshold ?? 100
-                } label: {
-                    Image(systemName: "bolt.fill")
-                        .foregroundStyle(.orange)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        guard let gvm = gamificationVM,
+                              let userOrigami = gvm.currentOrigami else { return }
+                        userOrigami.progressPercentage = gvm.nextPhaseThreshold ?? 100
+                    } label: {
+                        Image(systemName: "bolt.fill")
+                            .foregroundStyle(.orange)
+                    }
                 }
             }
         }
-    }
-    .onAppear {
-        let gvm = GamificationViewModel(
-            origamiRepository: OrigamiRepository(modelContext: context)
-        )
-        gvm.loadOrigami()
-        gamificationVM = gvm
+        .onAppear {
+            let gvm = GamificationViewModel(
+                origamiRepository: OrigamiRepository(modelContext: context)
+            )
+            gvm.loadOrigami()
+            gamificationVM = gvm
+        }
     }
 }

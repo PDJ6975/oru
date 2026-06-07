@@ -115,7 +115,7 @@ export const toggleHabit = async (
 ) => {
   try {
     const habitId = Number(req.params.habitId);
-    const { amount } = req.body;
+    const amount = req.body?.amount;
     const userId = res.locals.userId;
 
     const updatedHabit = await habitService.toggleHabit(

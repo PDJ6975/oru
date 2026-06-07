@@ -15,8 +15,8 @@ private extension Character {
 
 struct HabitFormView: View {
 
-    var viewModel: HabitViewModel
-    var habitToEdit: Habit?
+    @Bindable var viewModel: HabitViewModel
+    var habitToEdit: HabitDto?
     @Environment(\.dismiss) private var dismiss
 
     // MARK: - Estado del formulario
@@ -24,19 +24,20 @@ struct HabitFormView: View {
     @State private var icon = "🌟"
     @State private var iconSelection: TextSelection?
     @State private var name = ""
-    @State private var selectedDays: Set<Habit.Weekday> = Set(Habit.Weekday.allCases)
-    @State private var habitType: Habit.HabitType
+    @State private var selectedDays: Set<WeekDay> = Set(WeekDay.allCases)
+    @State private var habitType: HabitType
     @State private var dailyGoal = ""
-    @State private var selectedUnit: Unit?
+    @State private var selectedUnit: UnitDto?
     @State private var note = ""
     @State private var confirmTap = false
     @State private var isSaving = false
-    @State private var units: [Unit] = []
+    @State private var units: [UnitDto] = []
+    @State private var unitsLoaded = false
     @State private var showUnitManagement = false
 
     private var isEditing: Bool { habitToEdit != nil }
 
-    init(viewModel: HabitViewModel, habitToEdit: Habit? = nil) {
+    init(viewModel: HabitViewModel, habitToEdit: HabitDto? = nil) {
         self.viewModel = viewModel
         self.habitToEdit = habitToEdit
         _habitType = State(initialValue: habitToEdit?.type ?? .boolean)
@@ -88,33 +89,23 @@ struct HabitFormView: View {
         .onTapGesture { focusedField = nil }
         .sensoryFeedback(.selection, trigger: focusedField)
         .task {
-            units = viewModel.fetchUnits()
-            let defaultUnit = units.first { $0.name == Unit.defaultName }
+            await loadUnits()
             if let habit = habitToEdit {
                 icon = habit.icon
                 name = habit.name
-                selectedDays = Set(habit.scheduledDays)
+                selectedDays = Set(habit.scheduledDays.map(\.day))
                 habitType = habit.type
                 if let goal = habit.dailyGoal {
                     dailyGoal = goal.formatted
                 }
-                selectedUnit = habit.unit ?? defaultUnit
+                selectedUnit = units.first { $0.id == habit.unitId }
                 note = habit.note ?? ""
-            } else {
-                selectedUnit = defaultUnit
             }
         }
-        .alert(
-            "Error",
-            isPresented: Binding(
-                get: { viewModel.lastError != nil },
-                set: { if !$0 { viewModel.lastError = nil } }
-            )
-        ) {
-            Button("Aceptar", role: .cancel) { }
-        } message: {
-            Text(viewModel.lastError ?? "")
-        }
+        .connectionErrorAlert(
+            isPresented: $viewModel.connectionErrorPresented,
+            onRetry: saveHabit
+        )
     }
 
     // MARK: - Icono + Nombre
@@ -165,17 +156,18 @@ struct HabitFormView: View {
                 .fixedSize()
 
             Picker("Tipo", selection: $habitType) {
-                Text("Sí/No").tag(Habit.HabitType.boolean)
-                Text("Cantidad").tag(Habit.HabitType.quantity)
+                Text("Sí/No").tag(HabitType.boolean)
+                Text("Cantidad").tag(HabitType.quantity)
             }
             .pickerStyle(.segmented)
+            .disabled(isEditing)
             .sensoryFeedback(.selection, trigger: habitType)
             .onChange(of: habitType) { _, newValue in
                 if newValue == .boolean {
                     dailyGoal = ""
                     selectedUnit = nil
                 } else {
-                    selectedUnit = units.first { $0.name == Unit.defaultName }
+                    selectedUnit = units.first { $0.name == UnitDto.defaultName }
                 }
             }
         }
@@ -211,16 +203,18 @@ struct HabitFormView: View {
 
     private var unitPicker: some View {
         Menu {
-            ForEach(units, id: \.name) { unit in
+            ForEach(units) { unit in
                 Button(unit.name) { selectedUnit = unit }
             }
 
-            Divider()
+            if unitsLoaded {
+                Divider()
 
-            Button {
-                showUnitManagement = true
-            } label: {
-                Label("Añadir nueva medida", systemImage: "plus.circle.dashed")
+                Button {
+                    showUnitManagement = true
+                } label: {
+                    Label("Añadir nueva medida", systemImage: "plus.circle.dashed")
+                }
             }
         } label: {
             HStack(spacing: 2) {
@@ -240,19 +234,28 @@ struct HabitFormView: View {
     // MARK: - Nota
 
     private var noteSection: some View {
-        TextField(
-            "Deja aquí una nota, estado de ánimo...",
-            text: $note,
-            axis: .vertical
-        )
-        .oruInputSmall()
-        .focused($focusedField, equals: .note)
-        .onChange(of: note) { _, newValue in
-            note = viewModel.clampNote(newValue)
+        VStack(spacing: 8) {
+            TextField(
+                "Deja aquí una nota, estado de ánimo...",
+                text: $note,
+                axis: .vertical
+            )
+            .oruInputSmall()
+            .focused($focusedField, equals: .note)
+            .onChange(of: note) { _, newValue in
+                note = viewModel.clampNote(newValue)
+            }
+            .padding(16)
+            .frame(minHeight: 160, alignment: .topLeading)
+            .glassEffect(.regular, in: .rect(cornerRadius: 16))
+
+            if let error = viewModel.lastError {
+                Text(error)
+                    .font(.system(size: 13, weight: .regular, design: .rounded))
+                    .foregroundStyle(.red)
+                    .transition(.opacity)
+            }
         }
-        .padding(16)
-        .frame(minHeight: 160, alignment: .topLeading)
-        .glassEffect(.regular, in: .rect(cornerRadius: 16))
     }
 
     // MARK: - Botón confirmar
@@ -293,13 +296,24 @@ struct HabitFormView: View {
         .padding(.horizontal, 8)
     }
 
-    // MARK: - Refrescar unidades
+    // MARK: - Cargar unidades
+
+    private func loadUnits() async {
+        units = await viewModel.loadUnits()
+        unitsLoaded = !units.isEmpty
+        if selectedUnit == nil {
+            selectedUnit = units.first { $0.name == UnitDto.defaultName }
+        }
+    }
 
     private func refreshUnits() {
-        units = viewModel.fetchUnits()
-        if let selected = selectedUnit,
-           !units.contains(where: { $0.id == selected.id }) {
-            selectedUnit = units.first { $0.name == Unit.defaultName }
+        Task {
+            units = await viewModel.loadUnits()
+            unitsLoaded = !units.isEmpty
+            if let selected = selectedUnit,
+               !units.contains(where: { $0.id == selected.id }) {
+                selectedUnit = units.first { $0.name == UnitDto.defaultName }
+            }
         }
     }
 
@@ -308,41 +322,45 @@ struct HabitFormView: View {
     private func saveHabit() {
         guard !isSaving else { return }
         isSaving = true
+        viewModel.lastError = nil
 
-        let normalized = dailyGoal.replacingOccurrences(of: ",", with: ".")
-        let goal = habitType == .quantity ? Double(normalized) : nil
-        let unit = habitType == .quantity ? selectedUnit : nil
-        let trimmedNote = note.trimmingCharacters(in: .whitespaces)
-        let sortedDays = Array(selectedDays).sorted { $0.rawValue < $1.rawValue }
+        Task {
+            let normalized = dailyGoal.replacingOccurrences(of: ",", with: ".")
+            let goal = habitType == .quantity ? Double(normalized) : nil
+            let unit = habitType == .quantity ? selectedUnit : nil
+            let trimmedNote = note.trimmingCharacters(in: .whitespaces)
+            let sortedDays = Array(selectedDays).sorted { $0.rawValue < $1.rawValue }
 
-        if let habit = habitToEdit {
-            let data = HabitViewModel.FormData(
-                icon: icon,
-                name: name.trimmingCharacters(in: .whitespaces),
-                type: habitType,
-                scheduledDays: sortedDays,
-                dailyGoal: goal,
-                note: trimmedNote.isEmpty ? nil : trimmedNote,
-                unit: unit
-            )
-            viewModel.updateHabit(habit, with: data)
-        } else {
-            let habit = Habit(
-                icon: icon,
-                name: name.trimmingCharacters(in: .whitespaces),
-                type: habitType,
-                scheduledDays: sortedDays,
-                dailyGoal: goal,
-                note: trimmedNote.isEmpty ? nil : trimmedNote
-            )
-            habit.unit = unit
-            viewModel.addHabit(habit)
-        }
-
-        if viewModel.lastError == nil {
-            dismiss()
-        } else {
-            isSaving = false
+            if let habit = habitToEdit {
+                let request = UpdateHabitRequest(
+                    icon: icon,
+                    name: name.trimmingCharacters(in: .whitespaces),
+                    dailyGoal: goal,
+                    note: trimmedNote.isEmpty ? nil : trimmedNote,
+                    unitId: unit?.id,
+                    scheduledDays: sortedDays
+                )
+                if await viewModel.updateHabit(habit, request: request) {
+                    dismiss()
+                } else {
+                    isSaving = false
+                }
+            } else {
+                let request = CreateHabitRequest(
+                    icon: icon,
+                    name: name.trimmingCharacters(in: .whitespaces),
+                    type: habitType,
+                    dailyGoal: goal,
+                    note: trimmedNote.isEmpty ? nil : trimmedNote,
+                    unitId: unit?.id,
+                    scheduledDays: sortedDays
+                )
+                if await viewModel.createHabit(request) {
+                    dismiss()
+                } else {
+                    isSaving = false
+                }
+            }
         }
     }
 }
@@ -351,7 +369,7 @@ struct HabitFormView: View {
 
 private struct DaysSectionView: View {
 
-    @Binding var selectedDays: Set<Habit.Weekday>
+    @Binding var selectedDays: Set<WeekDay>
 
     var body: some View {
         VStack(alignment: .leading, spacing: 26) {
@@ -359,7 +377,7 @@ private struct DaysSectionView: View {
                 .oruLabel()
 
             HStack(spacing: 8) {
-                ForEach(Habit.Weekday.allCases, id: \.self) { day in
+                ForEach(WeekDay.allCases, id: \.self) { day in
                     dayPill(day)
                 }
             }
@@ -367,7 +385,7 @@ private struct DaysSectionView: View {
         }
     }
 
-    private func dayPill(_ day: Habit.Weekday) -> some View {
+    private func dayPill(_ day: WeekDay) -> some View {
         let isSelected = selectedDays.contains(day)
         return Button {
             if isSelected {
@@ -389,7 +407,7 @@ private struct DaysSectionView: View {
 
 // MARK: - Weekday nombres cortos para pills
 
-extension Habit.Weekday {
+extension WeekDay {
     var shortName: String {
         switch self {
         case .monday: "lun"
@@ -407,5 +425,14 @@ extension Habit.Weekday {
 
 #Preview(traits: .sampleData) {
     @Previewable @Environment(\.modelContext) var context
-    HabitFormView(viewModel: HabitViewModel(repository: HabitRepository(modelContext: context)))
+    let client = APIClient(tokenStore: TokenStore())
+    let habitService = HabitService(client: client)
+    let unitService = UnitService(client: client)
+    HabitFormView(
+        viewModel: HabitViewModel(
+            repository: HabitRepository(modelContext: context),
+            habitService: habitService,
+            unitService: unitService
+        )
+    )
 }

@@ -45,6 +45,9 @@ export const getUserHabits = async (
     include: {
       scheduledDays: true,
       compliances: true,
+      unit: {
+        select: { name: true, id: true },
+      },
     },
   });
 };
@@ -69,6 +72,10 @@ export const getHabitById = async (habitId: number) => {
     where: { id: habitId },
     include: {
       scheduledDays: true,
+      compliances: true,
+      unit: {
+        select: { name: true, id: true },
+      },
     },
   });
 };
@@ -92,6 +99,13 @@ export const createHabit = async (
         create: scheduledDays.map((day) => ({ day })),
       },
     },
+    include: {
+      scheduledDays: true,
+      compliances: true,
+      unit: {
+        select: { name: true, id: true },
+      },
+    },
   });
 };
 
@@ -106,10 +120,17 @@ export const updateHabit = async (
       ...habitData,
       scheduledDays: scheduledDays
         ? {
-            deleteMany: {}, // borrar los scheduled days existentes
-            create: scheduledDays.map((day) => ({ day })), // añadir los nuevos
+            deleteMany: {},
+            create: scheduledDays.map((day) => ({ day })),
           }
         : {},
+    },
+    include: {
+      scheduledDays: true,
+      compliances: true,
+      unit: {
+        select: { name: true, id: true },
+      },
     },
   });
 };

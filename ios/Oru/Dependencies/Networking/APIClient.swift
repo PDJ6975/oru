@@ -31,7 +31,32 @@ final class APIClient {
         let request = try buildRequest(
             path: path, method: method, queryItems: queryItems, body: body, authorized: authorized
         )
+        let data = try await perform(request)
+        do {
+            return try Self.decoder.decode(Response.self, from: data)
+        } catch {
+            throw APIError.decoding
+        }
+    }
 
+    /// Realiza una petición que no devuelve cuerpo (ej. DELETE con 204).
+    /// - Throws: `APIError`.
+    func sendVoid(
+        _ path: String,
+        method: HTTPMethod,
+        body: (any Encodable)? = nil,
+        authorized: Bool
+    ) async throws {
+        let request = try buildRequest(
+            path: path, method: method, queryItems: nil, body: body, authorized: authorized
+        )
+        _ = try await perform(request)
+    }
+
+    /// Envía la request, mapea errores de transporte y valida el status.
+    /// - Returns: el cuerpo crudo de la respuesta.
+    /// - Throws: `APIError`.
+    private func perform(_ request: URLRequest) async throws -> Data {
         let data: Data
         let response: URLResponse
         do {
@@ -49,11 +74,7 @@ final class APIClient {
 
         switch http.statusCode {
         case 200..<300:
-            do {
-                return try Self.decoder.decode(Response.self, from: data)
-            } catch {
-                throw APIError.decoding
-            }
+            return data
         case 400..<500:
             throw APIError.validation(Self.extractMessage(from: data) ?? "Solicitud inválida.")
         default:

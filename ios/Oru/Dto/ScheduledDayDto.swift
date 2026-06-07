@@ -1,12 +1,12 @@
 import Foundation
 
-struct ScheduledDayDto: Decodable {
+struct ScheduledDayDto: Decodable, Equatable {
     let id: Int
     let day: WeekDay
     let habitId: Int
 }
 
-enum WeekDay: String, Decodable, CaseIterable {
+enum WeekDay: String, Codable, CaseIterable {
     case monday = "MONDAY"
     case tuesday = "TUESDAY"
     case wednesday = "WEDNESDAY"

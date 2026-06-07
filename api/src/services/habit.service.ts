@@ -130,7 +130,9 @@ export const toggleHabit = async (
   // Evaluar el estado del progreso
   await origamiService.evaluateProgress(userId);
 
-  return reevaluatedHabit ?? updatedHabit;
+  return reevaluatedHabit
+    ? getHabitById(reevaluatedHabit.id)
+    : getHabitById(updatedHabit!.id);
 };
 
 export const recordSessionTime = async (

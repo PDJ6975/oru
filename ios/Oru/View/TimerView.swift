@@ -215,5 +215,7 @@ struct TimerView: View {
 #Preview(traits: .sampleData) {
     @Previewable @Environment(\.modelContext) var context
     let repo = HabitRepository(modelContext: context)
-    TimerView(viewModel: TimerViewModel(repository: repo, habitVM: HabitViewModel(repository: repo)))
+    let client = APIClient(tokenStore: TokenStore())
+    TimerView(viewModel: TimerViewModel(repository: repo, habitVM:
+        HabitViewModel(repository: repo, habitService: HabitService(client: client), unitService: UnitService(client: client))))
 }

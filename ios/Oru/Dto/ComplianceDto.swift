@@ -1,6 +1,6 @@
 import Foundation
 
-struct ComplianceDto: Decodable {
+struct ComplianceDto: Decodable, Equatable {
     let id: Int
     let date: Date
     let isCompleted: Bool

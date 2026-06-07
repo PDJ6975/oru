@@ -109,22 +109,35 @@ const amountValidation = body("amount")
     return true;
   });
 
-const ensureTypeAndDailyGoalConsistency = (
+const ensureTypeAndDailyGoalAndUnitConsistency = (
   type: HabitType,
   dailyGoal: unknown,
   hasDailyGoal: boolean,
-  requireDailyGoal: boolean,
+  hasUnit: boolean,
+  requireForQuantity: boolean,
 ) => {
+  // BOOLEAN: ni objetivo diario ni unidad
   if (type === HabitType.BOOLEAN && hasDailyGoal) {
     throw new createError.BadRequest(
       "Daily goal must not be provided for BOOLEAN type",
     );
   }
 
-  if (type === HabitType.QUANTITY && requireDailyGoal && !hasDailyGoal) {
+  if (type === HabitType.BOOLEAN && hasUnit) {
+    throw new createError.BadRequest(
+      "Unit must not be provided for BOOLEAN type",
+    );
+  }
+
+  // QUANTITY (creación): objetivo diario y unidad obligatorios
+  if (type === HabitType.QUANTITY && requireForQuantity && !hasDailyGoal) {
     throw new createError.BadRequest(
       "Daily goal must be provided for QUANTITY type",
     );
+  }
+
+  if (type === HabitType.QUANTITY && requireForQuantity && !hasUnit) {
+    throw new createError.BadRequest("Unit must be provided for QUANTITY type");
   }
 
   if (type === HabitType.QUANTITY && hasDailyGoal) {
@@ -141,10 +154,11 @@ const ensureTypeAndDailyGoalConsistency = (
 };
 
 const dailyGoalValidationTypes = body("dailyGoal").custom((value, { req }) => {
-  ensureTypeAndDailyGoalConsistency(
+  ensureTypeAndDailyGoalAndUnitConsistency(
     req.body.type,
     value,
     "dailyGoal" in req.body,
+    "unitId" in req.body,
     true,
   );
   return true;
@@ -159,10 +173,11 @@ export const validateDailyGoalForUpdate = async (
     const habitId = Number(req.params.habitId);
     const habit = await habitService.getHabitById(habitId);
 
-    ensureTypeAndDailyGoalConsistency(
+    ensureTypeAndDailyGoalAndUnitConsistency(
       habit!.type,
       req.body.dailyGoal,
       "dailyGoal" in req.body,
+      "unitId" in req.body,
       false,
     );
     next();
@@ -307,7 +322,7 @@ export const validateAmountWithHabitType = async (
 ) => {
   try {
     const habitId = Number(req.params.habitId);
-    const amount = req.body.amount;
+    const amount = req.body?.amount;
     const habit = await habitService.getHabitById(habitId);
 
     if (habit!.type === HabitType.BOOLEAN && amount !== undefined) {

@@ -5,13 +5,23 @@ import SwiftData
 class HabitViewModel {
 
     private let repository: HabitRepositoryProtocol
+    private let habitService: HabitService
+    private let unitService: UnitService
 
     var lastError: String?
-    var consolidatedHabit: Habit?
+    var connectionErrorPresented = false
+    var consolidatedHabit: HabitDto?
     var onHabitChanged: ((_ allCompleted: Bool) -> Void)?
+    var onHabitCreated: ((HabitDto) -> Void)?
+    var onHabitDeleted: ((HabitDto) -> Void)?
+    var onHabitUpdated: ((HabitDto) -> Void)?
+    var onHabitArchived: ((HabitDto) -> Void)?
+    var onHabitToggled: ((HabitDto) -> Void)?
 
-    init(repository: HabitRepositoryProtocol) {
+    init(repository: HabitRepositoryProtocol, habitService: HabitService, unitService: UnitService) {
         self.repository = repository
+        self.habitService = habitService
+        self.unitService = unitService
     }
     
     // Interruptor de hábitos booleanos
@@ -25,9 +35,7 @@ class HabitViewModel {
             habit.compliances.append(compliance)
         }
         do {
-            if habit.updateConsolidationStatus() {
-                consolidatedHabit = habit
-            }
+            habit.updateConsolidationStatus()
             try repository.saveChanges()
         } catch {
             lastError = "No se pudo guardar el cambio: \(error.localizedDescription)"
@@ -52,9 +60,7 @@ class HabitViewModel {
                 let compliance = Compliance(date: .now, completed: completed, recordedAmount: amount)
                 habit.compliances.append(compliance)
             }
-            if habit.updateConsolidationStatus() {
-                consolidatedHabit = habit
-            }
+            habit.updateConsolidationStatus()
             try repository.saveChanges()
         } catch {
             lastError = "No se pudo registrar la cantidad: \(error.localizedDescription)"
@@ -72,13 +78,45 @@ class HabitViewModel {
         habit.compliances.first { Calendar.current.isDateInToday($0.date) }
     }
 
+    func todayCompliance(for habit: HabitDto) -> ComplianceDto? {
+        habit.compliances.first { Calendar.current.isDateInToday($0.date) }
+    }
+
     func consolidationProgress(for habit: HabitDto) -> Double {
         let completedDays = habit.compliances.filter(\.isCompleted).count
         return min(Double(completedDays) / Double(HabitDto.consolidationThreshold), 1.0)
     }
 
+    func toggleBoolean(for habit: HabitDto) async {
+        await toggle(habit, amount: nil)
+    }
+
+    func recordAmount(_ amount: Double, for habit: HabitDto) async {
+        await toggle(habit, amount: amount)
+    }
+
+    private func toggle(_ habit: HabitDto, amount: Double?) async {
+        do {
+            let updated = try await habitService.toggleHabit(id: habit.id, amount: amount)
+            lastError = nil
+            // El hábito acaba de consolidarse (66ª vez): dispara la celebración.
+            if !habit.isConsolidated && updated.isConsolidated {
+                consolidatedHabit = updated
+            }
+            onHabitToggled?(updated)
+        } catch let error as APIError where error.isBackendUnreachable {
+            connectionErrorPresented = true
+        } catch {
+            lastError = "No se pudo registrar el cambio. Inténtalo de nuevo."
+        }
+    }
+
     func currentWeekday() -> Habit.Weekday {
         weekday(from: .now)
+    }
+
+    func currentWeekDay() -> WeekDay {
+        WeekDay.today
     }
 
     // MARK: - Gestión de unidades
@@ -136,8 +174,8 @@ class HabitViewModel {
 
     func isValidHabit(
         name: String,
-        selectedDays: Set<Habit.Weekday>,
-        type: Habit.HabitType,
+        selectedDays: Set<WeekDay>,
+        type: HabitType,
         dailyGoal: Double?
     ) -> Bool {
         let hasName = !name.trimmingCharacters(in: .whitespaces).isEmpty
@@ -147,18 +185,82 @@ class HabitViewModel {
     }
 
     func clampName(_ value: String) -> String {
-        String(value.prefix(Habit.maxNameLength))
+        String(value.prefix(HabitDto.maxNameLength))
     }
 
     func clampGoal(_ value: String) -> String {
-        String(value.prefix(Habit.maxGoalLength))
+        String(value.prefix(HabitDto.maxGoalLength))
     }
 
     func clampNote(_ value: String) -> String {
-        String(value.prefix(Habit.maxNoteLength))
+        String(value.prefix(HabitDto.maxNoteLength))
     }
 
     // MARK: - Creación y edición de hábitos
+
+    func createHabit(_ request: CreateHabitRequest) async -> Bool {
+        do {
+            let created = try await habitService.createHabit(request)
+            lastError = nil
+            onHabitCreated?(created)
+            return true
+        } catch let error as APIError where error.isBackendUnreachable {
+            connectionErrorPresented = true
+            return false
+        } catch let error as APIError {
+            lastError = error.errorDescription
+            return false
+        } catch {
+            lastError = "No se pudo crear el hábito. Inténtalo de nuevo."
+            return false
+        }
+    }
+
+    func deleteHabit(_ habit: HabitDto) async -> Bool {
+        do {
+            try await habitService.deleteHabit(id: habit.id)
+            onHabitDeleted?(habit)
+            return true
+        } catch let error as APIError where error.isBackendUnreachable {
+            connectionErrorPresented = true
+            return false
+        } catch {
+            lastError = "No se pudo eliminar el hábito. Inténtalo de nuevo."
+            return false
+        }
+    }
+
+    func archiveHabit(_ habit: HabitDto) async -> Bool {
+        do {
+            try await habitService.archiveHabit(id: habit.id)
+            onHabitArchived?(habit)
+            return true
+        } catch let error as APIError where error.isBackendUnreachable {
+            connectionErrorPresented = true
+            return false
+        } catch {
+            lastError = "No se pudo archivar el hábito. Inténtalo de nuevo."
+            return false
+        }
+    }
+
+    func updateHabit(_ habit: HabitDto, request: UpdateHabitRequest) async -> Bool {
+        do {
+            let updated = try await habitService.updateHabit(id: habit.id, request: request)
+            lastError = nil
+            onHabitUpdated?(updated)
+            return true
+        } catch let error as APIError where error.isBackendUnreachable {
+            connectionErrorPresented = true
+            return false
+        } catch let error as APIError {
+            lastError = error.errorDescription
+            return false
+        } catch {
+            lastError = "No se pudo actualizar el hábito. Inténtalo de nuevo."
+            return false
+        }
+    }
 
     func addHabit(_ habit: Habit) {
         do {
@@ -206,6 +308,14 @@ class HabitViewModel {
             return try repository.fetchAllUnits()
         } catch {
             lastError = "No se pudieron cargar las unidades: \(error.localizedDescription)"
+            return []
+        }
+    }
+
+    func loadUnits() async -> [UnitDto] {
+        do {
+            return try await unitService.fetchAllUnits()
+        } catch {
             return []
         }
     }
