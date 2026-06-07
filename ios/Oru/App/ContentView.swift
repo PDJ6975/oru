@@ -1,25 +1,27 @@
 import SwiftUI
-import SwiftData
 
 struct ContentView: View {
+    let dependencies: AppDependencies
 
-    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
-    @Environment(\.modelContext) private var modelContext
+    /// Si hay sesión saltamos la bienvenida
+    @State private var hasSession: Bool
     @State private var showNameRegistration = false
+
+    init(dependencies: AppDependencies) {
+        self.dependencies = dependencies
+        _hasSession = State(initialValue: dependencies.authService.hasSession)
+    }
 
     var body: some View {
         Group {
-            if hasCompletedOnboarding {
+            if hasSession {
                 MainTabView()
             } else if showNameRegistration {
                 NameRegistrationView(
-                    viewModel: WelcomeViewModel(
-                        repository: UserRepository(modelContext: modelContext),
-                        origamiRepository: OrigamiRepository(modelContext: modelContext)
-                    ),
+                    viewModel: WelcomeViewModel(authService: dependencies.authService),
                     onRegistered: {
                         withAnimation {
-                            hasCompletedOnboarding = true
+                            hasSession = true
                         }
                     }
                 )
@@ -35,6 +37,6 @@ struct ContentView: View {
     }
 }
 
-#Preview(traits: .emptyContainer) {
-    ContentView()
+#Preview {
+    ContentView(dependencies: AppDependencies())
 }

@@ -1,18 +1,17 @@
 import SwiftUI
-import SwiftData
 
 @Observable
 @MainActor
-class WelcomeViewModel {
+final class WelcomeViewModel {
     var name = ""
     var errorMessage: String?
+    var isRegistering = false
+    var connectionErrorPresented = false
 
-    private let repository: UserRepositoryProtocol?
-    private let origamiRepository: OrigamiRepositoryProtocol?
+    private let authService: AuthService
 
-    init(repository: UserRepositoryProtocol? = nil, origamiRepository: OrigamiRepositoryProtocol? = nil) {
-        self.repository = repository
-        self.origamiRepository = origamiRepository
+    init(authService: AuthService) {
+        self.authService = authService
     }
 
     var trimmedName: String {
@@ -24,32 +23,34 @@ class WelcomeViewModel {
         return length >= 2 && length <= 30
     }
 
-    func registerUser() -> Bool {
+    /// Registra al usuario contra la API.
+    /// - Returns: `true` si el registro fue correcto y se guardó el token.
+    func register() async -> Bool {
+        guard !isRegistering else { return false }
+
         guard isNameValid else {
             errorMessage = trimmedName.count < 2
                 ? "El nombre debe tener al menos 2 caracteres."
                 : "El nombre no puede superar los 30 caracteres."
-            return false
+                return false
         }
+
+        isRegistering = true
+        defer { isRegistering = false }
 
         do {
-            let user = User(name: trimmedName)
-            try repository?.addUser(user)
-            assignFirstOrigami(to: user)
+            try await authService.register(name: trimmedName)
             errorMessage = nil
             return true
+        } catch let error as APIError where error.isBackendUnreachable {
+            connectionErrorPresented = true
+            return false
+        } catch let error as APIError {
+            errorMessage = error.errorDescription
+            return false
         } catch {
-            errorMessage = "No se pudo guardar el nombre. Inténtalo de nuevo."
+            errorMessage = "No se pudo completar el registro. Inténtalo de nuevo."
             return false
         }
-    }
-
-    private func assignFirstOrigami(to user: User) {
-        guard let origamiRepository,
-              let origami = try? origamiRepository.fetchNextOrigami() else { return }
-        let userOrigami = UserOrigami()
-        userOrigami.user = user
-        userOrigami.origami = origami
-        try? origamiRepository.addUserOrigami(userOrigami)
     }
 }

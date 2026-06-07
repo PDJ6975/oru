@@ -74,9 +74,9 @@
 		3B15EDA02F82739A004694AA /* Exceptions for "Oru" folder in "OruTimerWidgetExtension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				Model/LiveActivity/CancelTimerIntent.swift,
-				Model/LiveActivity/OruTimerAttributes.swift,
-				Model/LiveActivity/PendingSessionStore.swift,
+				LiveActivity/CancelTimerIntent.swift,
+				LiveActivity/OruTimerAttributes.swift,
+				LiveActivity/PendingSessionStore.swift,
 			);
 			target = 3B15ED4F2F82738C004694AA /* OruTimerWidgetExtension */;
 		};
@@ -675,6 +675,7 @@
 				DEVELOPMENT_TEAM = 2KGM56VF9U;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Oru-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Oru;
 				INFOPLIST_KEY_LSApplicationCategoryType = "";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
@@ -713,6 +714,7 @@
 				DEVELOPMENT_TEAM = 2KGM56VF9U;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Oru-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Oru;
 				INFOPLIST_KEY_LSApplicationCategoryType = "";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;

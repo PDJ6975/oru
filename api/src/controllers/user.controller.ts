@@ -1,6 +1,5 @@
 import { NextFunction, Request, Response } from "express";
 import * as userService from "../services/user.service.js";
-import { User } from "../generated/prisma/client.js";
 
 export const createUser = async (
   req: Request,

@@ -21,6 +21,10 @@ struct NameRegistrationView: View {
         .onAppear {
             isNameFocused = true
         }
+        .connectionErrorAlert(
+            isPresented: $viewModel.connectionErrorPresented,
+            onRetry: attemptRegistration
+        )
     }
 }
 
@@ -78,32 +82,39 @@ private extension NameRegistrationView {
 
     var continueButton: some View {
         Button(action: attemptRegistration) {
-            Text("Continuar")
-                .oruButton()
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
+            Group {
+                if viewModel.isRegistering {
+                    ProgressView()
+                } else {
+                    Text("Continuar")
+                        .oruButton()
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
         }
         .buttonStyle(.bordered)
         .buttonBorderShape(.roundedRectangle(radius: 14))
         .tint(.oruPrimary)
-        .disabled(!viewModel.isNameValid)
+        .disabled(!viewModel.isNameValid || viewModel.isRegistering)
     }}
 
 // MARK: - Actions
 
 private extension NameRegistrationView {
     func attemptRegistration() {
-        guard viewModel.isNameValid else { return }
         isNameFocused = false
-        if viewModel.registerUser() {
-            onRegistered()
+        Task {
+            if await viewModel.register() {
+                onRegistered()
+            }
         }
     }
 }
 
-#Preview(traits: .emptyContainer) {
+#Preview {
     NameRegistrationView(
-        viewModel: WelcomeViewModel(),
+        viewModel: WelcomeViewModel(authService: AppDependencies().authService),
         onRegistered: {}
     )
 }
