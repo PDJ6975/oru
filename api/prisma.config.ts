@@ -1,5 +1,5 @@
-import "dotenv/config";
-import { defineConfig, env } from "prisma/config";
+import { defineConfig } from "prisma/config";
+import { bootEnv } from "./src/config/bootConfig.js";
 
 export default defineConfig({
   schema: "src/models",
@@ -8,6 +8,6 @@ export default defineConfig({
     seed: "tsx prisma/seed.ts",
   },
   datasource: {
-    url: env("DATABASE_URL"),
+    url: bootEnv.DATABASE_URL,
   },
 });

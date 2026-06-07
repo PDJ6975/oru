@@ -60,6 +60,8 @@
 		3BAD71CC2FA4C76200F8F8A5 /* OruUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OruUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		3BC17C372F543B7D009DD857 /* Oru.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Oru.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		3BC17C462F543B7E009DD857 /* OruTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OruTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		3BE01D602FD633F100CE7623 /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
+		3BE01D612FD633F100CE7623 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
 		3BF0AB542F90DDAD003B5DAF /* Oru.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = Oru.xctestplan; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -170,6 +172,7 @@
 				3BAD71CD2FA4C76200F8F8A5 /* OruUITests */,
 				3B15ED512F82738C004694AA /* Frameworks */,
 				3BC17C382F543B7D009DD857 /* Products */,
+				3BE01D622FD633F100CE7623 /* Config */,
 			);
 			sourceTree = "<group>";
 		};
@@ -182,6 +185,16 @@
 				3BAD71CC2FA4C76200F8F8A5 /* OruUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		3BE01D622FD633F100CE7623 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				3BE01D602FD633F100CE7623 /* Debug.xcconfig */,
+				3BE01D612FD633F100CE7623 /* Release.xcconfig */,
+			);
+			name = Config;
+			path = Oru/Config;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -546,6 +559,8 @@
 		};
 		3BC17C582F543B7E009DD857 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = 3BC17C392F543B7D009DD857 /* Oru */;
+			baseConfigurationReferenceRelativePath = Config/Debug.xcconfig;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -609,6 +624,8 @@
 		};
 		3BC17C592F543B7E009DD857 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = 3BC17C392F543B7D009DD857 /* Oru */;
+			baseConfigurationReferenceRelativePath = Config/Release.xcconfig;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;

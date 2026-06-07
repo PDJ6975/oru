@@ -29,15 +29,12 @@ jobs:
     name: SwiftLint
     needs: changes
     if: ${{ needs.changes.outputs.ios == 'true' }}
-    runs-on: macos-15
-    defaults:
-      run:
-        working-directory: ios
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # SwiftLint viene preinstalado la imagen
+      # Imagen oficial de SwiftLint mont sobre ubuntu para aumentar velocidad
       - name: SwiftLint
-        run: swiftlint --strict
+        run: docker run --rm -v "$PWD/ios":/work -w /work ghcr.io/realm/swiftlint:0.63.2 swiftlint --strict
 
   ios-build:
     name: iOS Build
@@ -71,7 +68,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
         with:
-          version: 11
+          package_json_file: api/package.json
       - uses: actions/setup-node@v4
         with:
           node-version: 22

@@ -1,0 +1,2 @@
+// Configuración de PRODUCCIÓN.
+API_BASE_URL = https:/$()/oru-production.up.railway.app/api/v1

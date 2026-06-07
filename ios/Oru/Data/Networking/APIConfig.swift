@@ -1,11 +1,16 @@
 import Foundation
 
 /// Configuración de acceso a la API.
+///
 enum APIConfig {
-    // En desarrollo apunta a la API local. Al desplegar, cambiar
-    // por la URL del servidor. El simulador resuelve `localhost` contra
-    // la máquina anfitriona; en un dispositivo físico habría
-    // que usar la IP de la máquina en la red local.
-    // swiftlint:disable:next force_unwrapping
-    static let baseURL = URL(string: "http://localhost:3000/api/v1")!
+    static let baseURL: URL = {
+        guard
+            // URL inyectada en runtime desde el entorno Bundle
+            let raw = Bundle.main.object(forInfoDictionaryKey: "API_BASE_URL") as? String,
+            let url = URL(string: raw)
+        else {
+            fatalError("API_BASE_URL ausente o inválida.")
+        }
+        return url
+    }()
 }

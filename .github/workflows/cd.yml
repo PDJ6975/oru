@@ -7,12 +7,15 @@ on:
     branches: [main]
 
 jobs:
-  release:
-    name: Release
-    runs-on: macos-26
+  tag:
+    name: Create tag
+    runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     permissions:
       contents: write
+    outputs:
+      new_tag: ${{ steps.tag.outputs.new_tag }}
+      changelog: ${{ steps.tag.outputs.changelog }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -25,6 +28,20 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           default_bump: patch
           fetch_all_tags: true
+
+  release:
+    name: Build & attach iOS client
+    needs: tag
+    runs-on: macos-26
+    permissions:
+      contents: write
+    defaults:
+      run:
+        working-directory: ios
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Build for Simulator
         run: |
@@ -43,7 +60,7 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.tag.outputs.new_tag }}
-          name: ${{ steps.tag.outputs.new_tag }}
-          body: ${{ steps.tag.outputs.changelog }}
-          files: Oru-Simulator.zip
+          tag_name: ${{ needs.tag.outputs.new_tag }}
+          name: ${{ needs.tag.outputs.new_tag }}
+          body: ${{ needs.tag.outputs.changelog }}
+          files: ios/Oru-Simulator.zip
