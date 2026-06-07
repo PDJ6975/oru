@@ -89,11 +89,8 @@ struct MainTabView: View {
                     origamiService: dependencies.origamiService
                 )
             }
-            if timerVM == nil, let habitVM {
-                let tvm = TimerViewModel(
-                    repository: HabitRepository(modelContext: modelContext),
-                    habitVM: habitVM
-                )
+            if timerVM == nil {
+                let tvm = TimerViewModel(timerService: dependencies.timerService)
                 timerVM = tvm
                 Task { await tvm.recoverSessionIfNeeded() }
             }

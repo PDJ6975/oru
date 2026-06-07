@@ -1,4 +1,3 @@
-import SwiftData
 import SwiftUI
 
 struct TimerView: View {
@@ -39,14 +38,26 @@ struct TimerView: View {
         .animation(.easeInOut(duration: 0.4), value: viewModel.state)
         .alert("¿Quieres acabar ya la sesión?", isPresented: $showCancelAlert) {
             Button("Finalizar", role: .destructive) {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    viewModel.cancel()
-                }
+                Task { await viewModel.cancel() }
             }
             Button("Continuar", role: .cancel) { }
         }
+        .connectionErrorAlert(isPresented: $viewModel.connectionErrorPresented) {
+            Task { await viewModel.retryConnection() }
+        }
+        .alert(
+            "Error",
+            isPresented: Binding(
+                get: { viewModel.lastError != nil },
+                set: { if !$0 { viewModel.lastError = nil } }
+            )
+        ) {
+            Button("Aceptar", role: .cancel) { }
+        } message: {
+            Text(viewModel.lastError ?? "")
+        }
         .task {
-            viewModel.loadCompatibleHabits()
+            await viewModel.loadCompatibleHabits()
         }
     }
 
@@ -95,12 +106,13 @@ struct TimerView: View {
                 Button {
                     withAnimation(.easeInOut(duration: 0.2)) {
                         isEditing = false
-                        viewModel.start()
                     }
+                    Task { await viewModel.start() }
                 } label: {
                     Image(systemName: "play")
                         .oruIconButton()
                 }
+                .disabled(viewModel.isStarting)
 
                 Button {
                     withAnimation(.easeInOut(duration: 0.2)) {
@@ -212,10 +224,7 @@ struct TimerView: View {
 
 // MARK: - Preview
 
-#Preview(traits: .sampleData) {
-    @Previewable @Environment(\.modelContext) var context
-    let repo = HabitRepository(modelContext: context)
+#Preview {
     let client = APIClient(tokenStore: TokenStore())
-    TimerView(viewModel: TimerViewModel(repository: repo, habitVM:
-        HabitViewModel(repository: repo, habitService: HabitService(client: client), unitService: UnitService(client: client))))
+    TimerView(viewModel: TimerViewModel(timerService: TimerService(client: client)))
 }

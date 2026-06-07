@@ -15,12 +15,17 @@ class TimerViewModel {
     var selectedMinutes = 25
 
     var trackHabit = false
-    var selectedHabit: Habit?
-    private(set) var compatibleHabits: [Habit] = []
+    var selectedHabit: TimerHabitDto?
+    private(set) var compatibleHabits: [TimerHabitDto] = []
 
-    var onSessionCompleted: ((Int) -> Void)?
-    private let repository: HabitRepositoryProtocol
-    private let habitVM: HabitViewModel
+    // Fallo de conexión
+    var connectionErrorPresented = false
+    // Resto de fallos 
+    var lastError: String?
+    private(set) var isStarting = false
+
+    private let timerService: TimerService
+    private var connectionRetry: (() async -> Void)?
     private var timerTask: Task<Void, Never>?
     private var currentActivity: Activity<OruTimerAttributes>?
     private var widgetCancelObserver: Any?
@@ -34,9 +39,8 @@ class TimerViewModel {
 
     private static let logger = Logger(subsystem: "com.antoniorodriguez.Oru2026", category: "LiveActivity")
 
-    init(repository: HabitRepositoryProtocol, habitVM: HabitViewModel) {
-        self.repository = repository
-        self.habitVM = habitVM
+    init(timerService: TimerService) {
+        self.timerService = timerService
         widgetCancelObserver = NotificationCenter.default.addObserver(
             forName: .timerCancelledFromWidget,
             object: nil,
@@ -45,43 +49,82 @@ class TimerViewModel {
             guard let self else { return }
             Task { @MainActor in
                 self.timerTask?.cancel() // cancel de Swift para interrumpir el Sleep
+                try? await self.timerService.cancelSession()
                 self.resetSession()
             }
         }
     }
 
-    func loadCompatibleHabits() {
+    func loadCompatibleHabits() async {
         do {
-            let active = try repository.fetchActiveHabits()
-            compatibleHabits = active.filter { $0.type == .quantity && ($0.unit?.isTimeUnit ?? false) }
+            compatibleHabits = try await timerService.loadCompatibleHabits()
         } catch {
             compatibleHabits = []
         }
     }
 
-    func start() {
+    func start() async {
+        guard !isStarting, state == .idle else { return }
+        isStarting = true
+        defer { isStarting = false }
+
         let now = Date.now
+        let habitId = trackHabit ? selectedHabit?.id : nil
+        do {
+            _ = try await timerService.createSession(
+                startDate: now,
+                selectedMinutes: selectedMinutes,
+                habitId: habitId
+            )
+        } catch let error as APIError where error.isBackendUnreachable {
+            connectionRetry = { [weak self] in await self?.start() }
+            connectionErrorPresented = true
+            return
+        } catch let error as APIError {
+            lastError = error.errorDescription
+            return
+        } catch {
+            lastError = "No se pudo iniciar la sesión. Inténtalo de nuevo."
+            return
+        }
+
         let end = now.addingTimeInterval(Double(selectedMinutes * 60))
         timerInterval = now...end
         state = .running
         UIApplication.shared.isIdleTimerDisabled = true
         startLiveActivity(endDate: end)
-        savePendingSession(startDate: now, endDate: end)
         scheduleFinish(after: Double(selectedMinutes * 60))
     }
 
-    func cancel() {
+    func retryConnection() async {
+        await connectionRetry?()
+    }
+
+    func cancel() async {
+        do {
+            try await timerService.cancelSession()
+        } catch let error as APIError where error.isBackendUnreachable {
+            connectionRetry = { [weak self] in await self?.cancel() }
+            connectionErrorPresented = true
+            return
+        } catch let error as APIError {
+            lastError = error.errorDescription
+            return
+        } catch {
+            lastError = "No se pudo finalizar la sesión. Inténtalo de nuevo."
+            return
+        }
+
         timerTask?.cancel()
         endLiveActivity(dismissImmediately: true)
-        resetSession()
+        withAnimation(.easeInOut(duration: 0.2)) {
+            resetSession()
+        }
     }
 
     private func finish() {
         endLiveActivity(dismissImmediately: false)
-        if trackHabit, let habit = selectedHabit {
-            recordSession(for: habit)
-            onSessionCompleted?(selectedMinutes)
-        }
+        Task { try? await timerService.finishSession() }
         resetSession()
     }
 
@@ -98,7 +141,6 @@ class TimerViewModel {
         timerInterval = nil
         state = .idle
         UIApplication.shared.isIdleTimerDisabled = false
-        PendingSessionStore.clear()
     }
 
     // MARK: - Live Activity
@@ -148,6 +190,10 @@ class TimerViewModel {
     // Usa `activityUpdates` como fallback cuando el daemon aún no ha sincronizado
     // con el proceso recién arrancado y `Activity.activities` está vacío.
     private func endStaleActivities() async {
+        // Solo limpiamos si NO hay sesión en curso: nunca cerrar una Live Activity
+        // recién iniciada por el usuario (activities/activityUpdates la incluyen).
+        guard state == .idle else { return }
+
         let finalState = OruTimerAttributes.ContentState(endDate: .now)
         let content = ActivityContent(state: finalState, staleDate: nil)
 
@@ -165,67 +211,50 @@ class TimerViewModel {
         // Slow path: cold start, el daemon aún no entregó la activity restaurada.
         // activityUpdates emite cuando la sincronización ocurre.
         Self.logger.notice("endStaleActivities: activities vacío, esperando daemon…")
-        let waitTask = Task {
+        let waitTask = Task { [weak self] in
             for await activity in Activity<OruTimerAttributes>.activityUpdates {
+                // Si arranca una sesión durante la ventana, NO la cerramos.
+                guard let self, self.state == .idle else { continue }
                 Self.logger.notice("endStaleActivities: activity recibida, cerrando…")
                 await activity.end(content, dismissalPolicy: .immediate)
             }
         }
         try? await Task.sleep(for: .seconds(2))
         waitTask.cancel()
-        currentActivity = nil
+        if state == .idle { currentActivity = nil }
     }
-
-    // MARK: - Persistencia
-
-    private func savePendingSession(startDate: Date, endDate: Date) {
-        PendingSessionStore.save(PendingSessionStore.Session(
-            startDate: startDate,
-            endDate: endDate,
-            selectedMinutes: selectedMinutes,
-            habitName: trackHabit ? selectedHabit?.name : nil,
-            trackHabit: trackHabit
-        ))
-    }
-
     func recoverSessionIfNeeded() async {
-        guard state == .idle, let pending = PendingSessionStore.load() else { return }
+        guard state == .idle else { return }
+
+        let session: TimerSessionDto?
+        do {
+            session = try await timerService.getActiveSession()
+        } catch {
+            return
+        }
+
+        // El GET pudo tardar; si el usuario inició una sesión mientras estaba en
+        // vuelo, el resultado es obsoleto y NO debemos tocar su Live Activity.
+        guard state == .idle else { return }
 
         let now = Date.now
-
-        if pending.endDate > now {
-            timerInterval = pending.startDate...pending.endDate
-            selectedMinutes = pending.selectedMinutes
-            state = .running
-            UIApplication.shared.isIdleTimerDisabled = true
-            currentActivity = Activity<OruTimerAttributes>.activities.first
-
-            let remaining = pending.endDate.timeIntervalSince(now)
-            scheduleFinish(after: remaining)
-        } else {
-            if pending.trackHabit, let habitName = pending.habitName {
-                selectedMinutes = pending.selectedMinutes
-                let habit = compatibleHabits.first(where: { $0.name == habitName })
-                    ?? (try? repository.fetchActiveHabits())?.first(where: { $0.name == habitName })
-                if let habit {
-                    recordSession(for: habit)
-                    onSessionCompleted?(pending.selectedMinutes)
-                }
-            }
-            // Limpiamos el pending ANTES del cierre: si el usuario vuelve a matar
-            // la app durante el await, al reabrir no habrá nada pendiente y no se
-            // duplicará el registro del hábito.
-            PendingSessionStore.clear()
+        guard let session else {
+            // Sin sesión activa limpiamos cualquier Live Activity residual.
             await endStaleActivities()
+            return
         }
-    }
 
-    // MARK: - Registro
+        let end = session.startDate.addingTimeInterval(Double(session.selectedMinutes * 60))
+        guard end > now else {
+            await endStaleActivities()
+            return
+        }
 
-    func recordSession(for habit: Habit) {
-        let sessionMinutes = Double(selectedMinutes)
-        let amount = habit.unit?.name == "h" ? sessionMinutes / 60.0 : sessionMinutes
-        let existing = habitVM.todayCompliance(for: habit)?.recordedAmount ?? 0
-        habitVM.recordAmount(existing + amount, for: habit)
+        timerInterval = session.startDate...end
+        selectedMinutes = session.selectedMinutes
+        state = .running
+        UIApplication.shared.isIdleTimerDisabled = true
+        currentActivity = Activity<OruTimerAttributes>.activities.first
+        scheduleFinish(after: end.timeIntervalSince(now))
     }
 }

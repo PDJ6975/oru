@@ -58,6 +58,9 @@ export const getHabitsForTimer = async (userId: number, today: WeekDay) => {
       userId,
       status: HabitStatus.ACTIVE,
       type: HabitType.QUANTITY,
+      unit: {
+        name: { in: ["h", "min"] },
+      },
       scheduledDays: {
         some: {
           day: today,

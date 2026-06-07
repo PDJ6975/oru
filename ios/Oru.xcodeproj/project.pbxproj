@@ -76,7 +76,6 @@
 			membershipExceptions = (
 				LiveActivity/CancelTimerIntent.swift,
 				LiveActivity/OruTimerAttributes.swift,
-				LiveActivity/PendingSessionStore.swift,
 			);
 			target = 3B15ED4F2F82738C004694AA /* OruTimerWidgetExtension */;
 		};
