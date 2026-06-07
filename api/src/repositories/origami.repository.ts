@@ -53,3 +53,20 @@ export const updateAssignment = async (
     include: { origami: true },
   });
 };
+
+export const getOrigamisCompletedInAYear = async (
+  userId: number,
+  startOfYear: Date,
+  endOfYear: Date,
+) => {
+  return prisma.assignment.findMany({
+    where: {
+      userId,
+      completedAt: {
+        gte: startOfYear,
+        lt: endOfYear,
+      },
+    },
+    include: { origami: true },
+  });
+};

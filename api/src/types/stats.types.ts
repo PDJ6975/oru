@@ -14,6 +14,7 @@ export interface HabitStatsComp {
   habitIcon: string;
   habitType: HabitType;
   habitStatus: HabitStatus;
+  habitUnit: string | null;
   currentStreak: number;
   bestStreak: number;
   totalCompletions: number;
@@ -45,6 +46,7 @@ export interface HabitStatsDto {
   habitIcon: string;
   habitType: HabitType;
   habitStatus: HabitStatus;
+  habitUnit: string | null;
   currentStreak: number;
   bestStreak: number;
   totalCompletions: number;

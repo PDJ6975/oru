@@ -21,4 +21,13 @@ final class OrigamiService {
     func assignNewOrigami() async throws -> OrigamiDto {
         try await client.send("origami/new", method: .post, authorized: true)
     }
+
+    /// Obtiene las figuras completadas en un año (`GET /origami/completed?year=`).
+    func fetchCompletedOrigamis(year: Int) async throws -> [CompletedOrigamiDto] {
+        try await client.send(
+            "origamis/completed",
+            queryItems: [URLQueryItem(name: "year", value: String(year))],
+            authorized: true
+        )
+    }
 }

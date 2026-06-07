@@ -38,8 +38,13 @@ extension Double {
             : String(format: "%.1f", self)
     }
 
-    // Formatea con unidad opcional: "5 km", "3.5 min", o solo "5".
+    // Deprecado
     func formatted(unit: Unit?) -> String {
         unit.map { "\(formatted) \($0.name)" } ?? formatted
+    }
+
+    func formatted(unitName: String?) -> String {
+        guard let unitName, !unitName.isEmpty else { return formatted }
+        return "\(formatted) \(unitName)"
     }
 }

@@ -85,8 +85,8 @@ struct MainTabView: View {
             }
             if statsVM == nil {
                 statsVM = StatsViewModel(
-                    repository: HabitRepository(modelContext: modelContext),
-                    origamiRepository: OrigamiRepository(modelContext: modelContext)
+                    statsService: dependencies.statsService,
+                    origamiService: dependencies.origamiService
                 )
             }
             if timerVM == nil, let habitVM {

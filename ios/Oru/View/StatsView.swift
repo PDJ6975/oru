@@ -1,13 +1,12 @@
 import SwiftUI
-import SwiftData
 
 struct StatsView: View {
 
-    var viewModel: StatsViewModel
+    @Bindable var viewModel: StatsViewModel
     @State private var showAllHabits = false
     @State private var showRankingInfo = false
     @State private var showArchivedInfo = false
-    @State private var selectedOrigami: UserOrigami?
+    @State private var selectedOrigami: CompletedOrigamiDto?
 
     private let gridColumns = [
         GridItem(.flexible(), spacing: 12),
@@ -88,9 +87,13 @@ struct StatsView: View {
                 .fixedSize()
             }
         }
-        .onAppear {
-            viewModel.loadStats()
+        .task {
+            await viewModel.loadStats()
         }
+        .connectionErrorAlert(
+            isPresented: $viewModel.connectionErrorPresented,
+            onRetry: { Task { await viewModel.loadStats() } }
+        )
     }
 
     // MARK: - Subvistas
@@ -105,20 +108,18 @@ struct StatsView: View {
     }
 
     private var canGoBack: Bool {
-        guard let min = viewModel.availableYears.last else { return false }
-        return viewModel.selectedYear > min
+        viewModel.selectedYear > viewModel.minYear
     }
 
     private var canGoForward: Bool {
-        guard let max = viewModel.availableYears.first else { return false }
-        return viewModel.selectedYear < max
+        viewModel.selectedYear < viewModel.maxYear
     }
 
     private func changeYear(by delta: Int) {
         viewModel.selectedYear += delta
     }
 
-    private var visibleHabits: [StatsViewModel.HabitStats] {
+    private var visibleHabits: [HabitStatsDto] {
         showAllHabits ? viewModel.habitStats : Array(viewModel.habitStats.prefix(topCount))
     }
 
@@ -181,16 +182,16 @@ struct StatsView: View {
         }
     }
 
-    private func habitRow(_ stat: StatsViewModel.HabitStats) -> some View {
+    private func habitRow(_ stat: HabitStatsDto) -> some View {
         HStack(spacing: 12) {
-            Text(stat.habit.icon)
+            Text(stat.habitIcon)
                 .font(.system(size: 24))
                 .frame(width: 36)
 
             VStack(spacing: 6) {
                 // Fila 1: nombre a la izquierda, métricas principales a la derecha
                 HStack {
-                    Text(stat.habit.name)
+                    Text(stat.habitName)
                         .oruTextPrimary()
                         .lineLimit(1)
 
@@ -199,24 +200,20 @@ struct StatsView: View {
                     HStack(spacing: 10) {
                         habitMetric(icon: "flame", value: "\(stat.currentStreak)")
                         habitMetric(icon: "trophy", value: "\(stat.bestStreak)")
-                        habitMetric(icon: "checkmark.seal", value: "\(stat.totalCompleted)")
+                        habitMetric(icon: "checkmark.seal", value: "\(stat.totalCompletions)")
                     }
                 }
 
                 // Fila 2 (solo quantity): acumulado a la izquierda, media a la derecha
-                if stat.totalAccumulated != nil || stat.dailyAverage != nil {
+                if stat.habitType == .quantity {
                     HStack {
-                        if let total = stat.totalAccumulated {
-                            Text("Total: \(total.formatted(unit: stat.habit.unit))")
-                                .oruTextSecondary()
-                        }
+                        Text("Total: \(stat.totalAccumulation.formatted(unitName: stat.habitUnit))")
+                            .oruTextSecondary()
 
                         Spacer(minLength: 0)
 
-                        if let avg = stat.dailyAverage {
-                            Text("Media: \(avg.formatted(unit: stat.habit.unit))")
-                                .oruTextSecondary()
-                        }
+                        Text("Media: \(stat.dailyAverage.formatted(unitName: stat.habitUnit))")
+                            .oruTextSecondary()
                     }
                 }
             }
@@ -286,15 +283,15 @@ struct StatsView: View {
         }
     }
 
-    private func archivedRow(_ stat: StatsViewModel.HabitStats) -> some View {
+    private func archivedRow(_ stat: HabitStatsDto) -> some View {
         HStack(spacing: 12) {
-            Text(stat.habit.icon)
+            Text(stat.habitIcon)
                 .font(.system(size: 22))
                 .frame(width: 32)
 
             VStack(spacing: 6) {
                 HStack {
-                    Text(stat.habit.name)
+                    Text(stat.habitName)
                         .oruTextPrimary()
                         .lineLimit(1)
 
@@ -302,23 +299,19 @@ struct StatsView: View {
 
                     HStack(spacing: 10) {
                         habitMetric(icon: "trophy", value: "\(stat.bestStreak)")
-                        habitMetric(icon: "checkmark.seal", value: "\(stat.totalCompleted)")
+                        habitMetric(icon: "checkmark.seal", value: "\(stat.totalCompletions)")
                     }
                 }
 
-                if stat.totalAccumulated != nil || stat.dailyAverage != nil {
+                if stat.habitType == .quantity {
                     HStack {
-                        if let total = stat.totalAccumulated {
-                            Text("Total: \(total.formatted(unit: stat.habit.unit))")
-                                .oruTextSecondary()
-                        }
+                        Text("Total: \(stat.totalAccumulation.formatted(unitName: stat.habitUnit))")
+                            .oruTextSecondary()
 
                         Spacer(minLength: 0)
 
-                        if let avg = stat.dailyAverage {
-                            Text("Media: \(avg.formatted(unit: stat.habit.unit))")
-                                .oruTextSecondary()
-                        }
+                        Text("Media: \(stat.dailyAverage.formatted(unitName: stat.habitUnit))")
+                            .oruTextSecondary()
                     }
                 }
             }
@@ -352,18 +345,18 @@ struct StatsView: View {
         }
     }
 
-    private func origamiCard(_ uo: UserOrigami) -> some View {
+    private func origamiCard(_ uo: CompletedOrigamiDto) -> some View {
         VStack(spacing: 8) {
-            Image(uo.lastPhaseIllustration ?? "mariposa")
+            Image(uo.illustration)
                 .resizable()
                 .scaledToFit()
                 .frame(height: 140)
 
-            Text(uo.origami?.name.capitalized ?? "Origami")
+            Text(uo.name.capitalized)
                 .oruTextPrimary()
                 .lineLimit(1)
 
-            Text(uo.completionDate?.formatted(.dateTime.day().month(.abbreviated).locale(Locale(identifier: "es_ES"))) ?? "Sin fecha")
+            Text(uo.completedAt.formatted(.dateTime.day().month(.abbreviated).locale(Locale(identifier: "es_ES"))))
                 .oruTextSecondary()
         }
         .frame(maxWidth: .infinity)
@@ -371,19 +364,19 @@ struct StatsView: View {
         .glassEffect(.regular, in: .rect(cornerRadius: 14))
     }
 
-    private func origamiDetail(_ uo: UserOrigami) -> some View {
+    private func origamiDetail(_ uo: CompletedOrigamiDto) -> some View {
         VStack(spacing: 16) {
             Spacer()
 
-            Image(uo.lastPhaseIllustration ?? "mariposa")
+            Image(uo.illustration)
                 .resizable()
                 .scaledToFit()
                 .padding(.horizontal, 40)
 
-            Text(uo.origami?.name.capitalized ?? "Origami")
+            Text(uo.name.capitalized)
                 .oruSectionTitle()
 
-            Text("Completado el \(uo.completionDate?.formatted(.dateTime.day().month(.wide).year().locale(Locale(identifier: "es_ES"))) ?? "—")")
+            Text("Completado el \(uo.completedAt.formatted(.dateTime.day().month(.wide).year().locale(Locale(identifier: "es_ES"))))")
                 .oruTextSecondary()
 
             Spacer()
@@ -425,11 +418,11 @@ struct StatsView: View {
 // MARK: - Preview
 
 #Preview(traits: .sampleData) {
-    @Previewable @Environment(\.modelContext) var context
+    let client = APIClient(tokenStore: TokenStore())
     NavigationStack {
         StatsView(viewModel: StatsViewModel(
-            repository: HabitRepository(modelContext: context),
-            origamiRepository: OrigamiRepository(modelContext: context)
+            statsService: StatsService(client: client),
+            origamiService: OrigamiService(client: client)
         ))
     }
 }

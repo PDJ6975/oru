@@ -1,6 +1,8 @@
 import { NextFunction, Request, Response } from "express";
 import * as origamiService from "../services/origami.service.js";
 import createError from "http-errors";
+import { yearValidation } from "./stats.validation.js";
+import { validateRequest } from "./validateRequest.js";
 
 export const validateActiveAssignment = async (
   req: Request,
@@ -73,4 +75,9 @@ export const validateNextPhaseOrigami = [
 export const validateChangeOrigami = [
   validateActiveAssignment,
   validateMoreOrigamisAvailable,
+];
+
+export const validateGetOrigamisCompletedInAYear = [
+  yearValidation,
+  validateRequest,
 ];

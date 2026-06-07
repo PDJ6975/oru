@@ -187,6 +187,9 @@ export const getUserHabitsWithCompliances = async (
     },
     include: {
       scheduledDays: true,
+      unit: {
+        select: { name: true },
+      },
       compliances: {
         where: {
           date: {

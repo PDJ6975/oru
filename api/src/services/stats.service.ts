@@ -9,7 +9,11 @@ import { HabitStatsComp, UserStatsComp } from "../types/stats.types.js";
 import { getComplianceForDay } from "../utils/today.compliances.js";
 
 export type HabitWithData = Prisma.HabitGetPayload<{
-  include: { scheduledDays: true; compliances: true };
+  include: {
+    scheduledDays: true;
+    compliances: true;
+    unit: { select: { name: true } };
+  };
 }>;
 
 type HabitStatsAcc = Map<string, HabitStatsComp>; // `${habitId}-${year}` -> stats
@@ -133,9 +137,15 @@ const accumulateRange = (
     let dayCompleted = 0;
 
     for (const habit of habits) {
-      const isActive = habit.archivedAt
-        ? habit.createdAt <= day && day <= habit.archivedAt
-        : habit.createdAt <= day;
+      // Normalizar createdAty y archivedAt porque son fechas completas y today
+      // esta al comienzo del día, por lo que siempre un hábito no contaría como activo, sino como archivado
+      const createdDay = startOfDay(habit.createdAt);
+      const archivedDay = habit.archivedAt
+        ? startOfDay(habit.archivedAt)
+        : null;
+      const isActive = archivedDay
+        ? createdDay <= day && day <= archivedDay
+        : createdDay <= day;
       const isScheduled = habit.scheduledDays.some((sd) => sd.day === weekDay);
 
       // Si no estaba activo ni programado ese día, no afecta a sus stats
@@ -234,6 +244,7 @@ const seedYearBase = (
       habitIcon: info.icon,
       habitType: info.type,
       habitStatus: info.status,
+      habitUnit: info.unit?.name ?? null,
       currentStreak: row.currentStreak,
       bestStreak: row.bestStreak,
       totalCompletions: row.totalCompletions,
@@ -270,6 +281,7 @@ const getOrInitHabitStatsAcc = (
       habitIcon: habit.icon,
       habitType: habit.type,
       habitStatus: habit.status,
+      habitUnit: habit.unit?.name ?? null,
       currentStreak: prev?.currentStreak ?? 0,
       bestStreak: prev?.bestStreak ?? 0,
       totalCompletions: prev?.totalCompletions ?? 0,

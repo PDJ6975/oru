@@ -42,3 +42,21 @@ export const assignNewOrigami = async (
     next(error);
   }
 };
+
+export const getOrigamisCompletedInAYear = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = res.locals.userId;
+    const year = Number(req.query.year);
+    const origamisCompleted = await origamiService.getOrigamisCompletedInAYear(
+      userId,
+      year,
+    );
+    res.status(200).json(origamisCompleted);
+  } catch (error) {
+    next(error);
+  }
+};

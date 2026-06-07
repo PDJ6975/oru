@@ -8,6 +8,7 @@ final class AppDependencies {
     let habitService: HabitService
     let unitService: UnitService
     let origamiService: OrigamiService
+    let statsService: StatsService
 
     init() {
         let tokenStore = TokenStore()
@@ -18,5 +19,6 @@ final class AppDependencies {
         self.habitService = HabitService(client: client)
         self.unitService = UnitService(client: client)
         self.origamiService = OrigamiService(client: client)
+        self.statsService = StatsService(client: client)
     }
 }

@@ -3,6 +3,7 @@ import { verifyUser } from "../middleware/user.validation.js";
 import * as origamiController from "../controllers/origami.controller.js";
 import {
   validateChangeOrigami,
+  validateGetOrigamisCompletedInAYear,
   validateNextPhaseOrigami,
 } from "../middleware/origami.validator.js";
 
@@ -20,4 +21,10 @@ origamiRoutes.post(
   verifyUser,
   validateChangeOrigami,
   origamiController.assignNewOrigami,
+);
+origamiRoutes.get(
+  "/origamis/completed",
+  verifyUser,
+  validateGetOrigamisCompletedInAYear,
+  origamiController.getOrigamisCompletedInAYear,
 );

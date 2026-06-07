@@ -185,3 +185,26 @@ const getSessionBonus = (minutes: number) => {
   else if (minutes < 60) return 4.0;
   else return 5.0;
 };
+
+export const getOrigamisCompletedInAYear = async (
+  userId: number,
+  year: number,
+) => {
+  const startOfYear = startOfDay(new Date(year, 0, 1));
+  const endOfYear = startOfDay(new Date(year, 11, 31, 23, 59, 59));
+  const assignments = await origamiRepository.getOrigamisCompletedInAYear(
+    userId,
+    startOfYear,
+    endOfYear,
+  );
+
+  return assignments.map((assignment) => ({
+    id: assignment.id,
+    name: assignment.origami.name,
+    illustration: getOrigamiName(
+      assignment.origami.name,
+      assignment.origami.phases - 1,
+    ),
+    completedAt: assignment.completedAt,
+  }));
+};
