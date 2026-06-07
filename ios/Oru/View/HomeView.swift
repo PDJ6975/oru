@@ -8,9 +8,6 @@ struct HomeView: View {
     @Bindable var homeVM: HomeViewModel
     var illustrationOverride: String?
 
-    @Query(sort: \Habit.creationDate, order: .reverse)
-    private var allHabits: [Habit]
-
     @State private var revealingName: String?
     @State private var revealOpacity: Double = 0
     @State private var imageOpacity: Double = 1
@@ -20,15 +17,9 @@ struct HomeView: View {
     @State private var habitToEdit: Habit?
     @State private var habitToDelete: Habit?
 
-    private var todayHabits: [Habit] {
-        let today = habitVM.currentWeekday()
-        return allHabits.filter { $0.status != .archived && $0.scheduledDays.contains(today) }
-    }
+    private var todayHabits: [HabitDto] { homeVM.todayHabits }
 
-    private var otherHabits: [Habit] {
-        let today = habitVM.currentWeekday()
-        return allHabits.filter { $0.status != .archived && !$0.scheduledDays.contains(today) }
-    }
+    private var otherHabits: [HabitDto] { homeVM.pausedHabits }
 
     private var hasNoHabits: Bool {
         todayHabits.isEmpty && otherHabits.isEmpty

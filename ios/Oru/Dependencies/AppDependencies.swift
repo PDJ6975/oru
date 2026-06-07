@@ -5,6 +5,7 @@ final class AppDependencies {
     let tokenStore: TokenStore
     let authService: AuthService
     let userService: UserService
+    let habitService: HabitService
 
     init() {
         let tokenStore = TokenStore()
@@ -12,5 +13,6 @@ final class AppDependencies {
         let client = APIClient(tokenStore: tokenStore)
         self.authService = AuthService(client: client, tokenStore: tokenStore)
         self.userService = UserService(client: client)
+        self.habitService = HabitService(client: client)
     }
 }

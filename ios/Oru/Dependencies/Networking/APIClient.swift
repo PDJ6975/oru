@@ -24,10 +24,13 @@ final class APIClient {
     func send<Response: Decodable>(
         _ path: String,
         method: HTTPMethod = .get,
+        queryItems: [URLQueryItem]? = nil,
         body: (any Encodable)? = nil,
         authorized: Bool
     ) async throws -> Response {
-        let request = try buildRequest(path: path, method: method, body: body, authorized: authorized)
+        let request = try buildRequest(
+            path: path, method: method, queryItems: queryItems, body: body, authorized: authorized
+        )
 
         let data: Data
         let response: URLResponse
@@ -61,11 +64,12 @@ final class APIClient {
     private func buildRequest(
         path: String,
         method: HTTPMethod,
+        queryItems: [URLQueryItem]?,
         body: (any Encodable)?,
         authorized: Bool
     ) throws -> URLRequest {
         let url = baseURL.appendingPathComponent(path)
-        var request = URLRequest(url: url)
+        var request = URLRequest(url: try Self.appendingQuery(queryItems, to: url))
         request.httpMethod = method.rawValue
 
         if let body {
@@ -82,6 +86,17 @@ final class APIClient {
         }
 
         return request
+    }
+
+    /// Añade los query items a la URL, si los hay.
+    private static func appendingQuery(_ queryItems: [URLQueryItem]?, to url: URL) throws -> URL {
+        guard let queryItems, !queryItems.isEmpty else { return url }
+        guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
+            throw APIError.unknown
+        }
+        components.queryItems = queryItems
+        guard let finalURL = components.url else { throw APIError.unknown }
+        return finalURL
     }
 
     /// Decoder compartido para las fechas de la API, que llegan en ISO8601.

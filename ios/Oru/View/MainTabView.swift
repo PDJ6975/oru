@@ -44,7 +44,10 @@ struct MainTabView: View {
         .tint(Color.oruPrimary)
         .onAppear {
             if homeVM == nil {
-                homeVM = HomeViewModel(userService: dependencies.userService)
+                homeVM = HomeViewModel(
+                    userService: dependencies.userService,
+                    habitService: dependencies.habitService
+                )
             }
             if gamificationVM == nil {
                 let gvm = GamificationViewModel(
