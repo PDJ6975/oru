@@ -4,13 +4,13 @@ import Foundation
 final class AppDependencies {
     let tokenStore: TokenStore
     let authService: AuthService
+    let userService: UserService
 
     init() {
         let tokenStore = TokenStore()
         self.tokenStore = tokenStore
-        self.authService = AuthService(
-            client: APIClient(tokenStore: tokenStore),
-            tokenStore: tokenStore
-        )
+        let client = APIClient(tokenStore: tokenStore)
+        self.authService = AuthService(client: client, tokenStore: tokenStore)
+        self.userService = UserService(client: client)
     }
 }

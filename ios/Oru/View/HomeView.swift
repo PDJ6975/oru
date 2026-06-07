@@ -5,9 +5,9 @@ struct HomeView: View {
 
     @Binding var gamificationVM: GamificationViewModel?
     var habitVM: HabitViewModel
+    @Bindable var homeVM: HomeViewModel
     var illustrationOverride: String?
 
-    @Query private var users: [User]
     @Query(sort: \Habit.creationDate, order: .reverse)
     private var allHabits: [Habit]
 
@@ -65,8 +65,15 @@ struct HomeView: View {
             }
         }
         .toolbarBackground(.hidden, for: .navigationBar)
+        .task {
+            await homeVM.load()
+        }
+        .connectionErrorAlert(
+            isPresented: $homeVM.connectionErrorPresented,
+            onRetry: { Task { await homeVM.load() } }
+        )
         .overlay(alignment: .topLeading) {
-            Text("Hola, \(users.first?.name ?? "")!")
+            Text("Hola, \(homeVM.userName)!")
                 .font(.system(size: 24, weight: .regular, design: .rounded))
                 .tracking(0.8)
                 .foregroundStyle(.secondary)

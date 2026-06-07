@@ -15,7 +15,7 @@ struct ContentView: View {
     var body: some View {
         Group {
             if hasSession {
-                MainTabView()
+                MainTabView(dependencies: dependencies)
             } else if showNameRegistration {
                 NameRegistrationView(
                     viewModel: WelcomeViewModel(authService: dependencies.authService),

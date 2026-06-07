@@ -47,7 +47,7 @@ final class APIClient {
         switch http.statusCode {
         case 200..<300:
             do {
-                return try JSONDecoder().decode(Response.self, from: data)
+                return try Self.decoder.decode(Response.self, from: data)
             } catch {
                 throw APIError.decoding
             }
@@ -83,6 +83,24 @@ final class APIClient {
 
         return request
     }
+
+    /// Decoder compartido para las fechas de la API, que llegan en ISO8601.
+    private static let decoder: JSONDecoder = {
+        let decoder = JSONDecoder()
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        decoder.dateDecodingStrategy = .custom { decoder in
+            let string = try decoder.singleValueContainer().decode(String.self)
+            guard let date = formatter.date(from: string) else {
+                throw DecodingError.dataCorrupted(
+                    .init(codingPath: decoder.codingPath,
+                          debugDescription: "Fecha ISO8601 no válida: \(string)")
+                )
+            }
+            return date
+        }
+        return decoder
+    }()
 
     /// Mapea los errores de `URLSession` que indican que no se alcanzó el backend.
     private static func mapTransportError(_ error: URLError) -> APIError {

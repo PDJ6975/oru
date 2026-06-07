@@ -3,18 +3,21 @@ import SwiftData
 
 struct MainTabView: View {
 
+    let dependencies: AppDependencies
+
     @Environment(\.modelContext) private var modelContext
     @State private var gamificationVM: GamificationViewModel?
     @State private var habitVM: HabitViewModel?
     @State private var statsVM: StatsViewModel?
     @State private var timerVM: TimerViewModel?
+    @State private var homeVM: HomeViewModel?
 
     var body: some View {
         TabView {
             Tab("Inicio", systemImage: "apple.homekit") {
                 NavigationStack {
-                    if let habitVM {
-                        HomeView(gamificationVM: $gamificationVM, habitVM: habitVM)
+                    if let habitVM, let homeVM {
+                        HomeView(gamificationVM: $gamificationVM, habitVM: habitVM, homeVM: homeVM)
                     }
                 }
                 .oruDefaultTint()
@@ -40,6 +43,9 @@ struct MainTabView: View {
         }
         .tint(Color.oruPrimary)
         .onAppear {
+            if homeVM == nil {
+                homeVM = HomeViewModel(userService: dependencies.userService)
+            }
             if gamificationVM == nil {
                 let gvm = GamificationViewModel(
                     origamiRepository: OrigamiRepository(modelContext: modelContext)
@@ -78,5 +84,5 @@ struct MainTabView: View {
 }
 
 #Preview(traits: .sampleData) {
-    MainTabView()
+    MainTabView(dependencies: AppDependencies())
 }
