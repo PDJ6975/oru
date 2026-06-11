@@ -635,8 +635,6 @@ extension WeekDay {
     HomePreview()
 }
 
-/// Contenedor de la preview: construye los view models en su `init`
-/// (no se puede hacer en el default de un `@Previewable`).
 private struct HomePreview: View {
     @State private var gamificationVM: GamificationViewModel
     @State private var habitVM: HabitViewModel

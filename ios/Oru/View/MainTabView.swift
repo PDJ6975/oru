@@ -57,25 +57,17 @@ struct MainTabView: View {
                     habitService: dependencies.habitService,
                     unitService: dependencies.unitService
                 )
-                hvm.onHabitCreated = { [weak homeVM, weak gamificationVM] habit in
-                    homeVM?.addCreatedHabit(habit)
-                    Task { await gamificationVM?.load() }
-                }
-                hvm.onHabitDeleted = { [weak homeVM, weak gamificationVM] habit in
-                    homeVM?.removeHabit(habit)
-                    Task { await gamificationVM?.load() }
-                }
-                hvm.onHabitUpdated = { [weak homeVM, weak gamificationVM] habit in
-                    homeVM?.updateHabit(habit)
-                    Task { await gamificationVM?.load() }
-                }
-                hvm.onHabitArchived = { [weak homeVM, weak gamificationVM] habit in
-                    homeVM?.removeHabit(habit)
-                    Task { await gamificationVM?.load() }
-                }
+                // Toggle -> actualización en memoria
                 hvm.onHabitToggled = { [weak homeVM, weak gamificationVM] habit in
                     homeVM?.replaceHabit(habit)
                     Task { await gamificationVM?.load() }
+                }
+                // CRUD -> reload home 
+                hvm.onHabitsChanged = { [weak homeVM, weak gamificationVM] in
+                    Task {
+                        await homeVM?.load()
+                        await gamificationVM?.load()
+                    }
                 }
                 habitVM = hvm
             }

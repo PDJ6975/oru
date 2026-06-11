@@ -9,11 +9,8 @@ class HabitViewModel {
     var lastError: String?
     var connectionErrorPresented = false
     var consolidatedHabit: HabitDTO?
-    var onHabitCreated: ((HabitDTO) -> Void)?
-    var onHabitDeleted: ((HabitDTO) -> Void)?
-    var onHabitUpdated: ((HabitDTO) -> Void)?
-    var onHabitArchived: ((HabitDTO) -> Void)?
     var onHabitToggled: ((HabitDTO) -> Void)?
+    var onHabitsChanged: (() -> Void)?
 
     init(habitService: HabitService, unitService: UnitService) {
         self.habitService = habitService
@@ -57,6 +54,117 @@ class HabitViewModel {
         WeekDay.today
     }
 
+    // MARK: - Validación
+
+    func isValidHabit(
+        name: String,
+        selectedDays: Set<WeekDay>,
+        type: HabitType,
+        dailyGoal: Double?
+    ) -> Bool {
+        let hasName = !name.trimmingCharacters(in: .whitespaces).isEmpty
+        let hasDays = !selectedDays.isEmpty
+        let hasGoalIfNeeded = type == .boolean || (dailyGoal ?? 0) > 0
+        return hasName && hasDays && hasGoalIfNeeded
+    }
+
+    func clampName(_ value: String) -> String {
+        String(value.prefix(HabitDTO.maxNameLength))
+    }
+
+    func clampGoal(_ value: String) -> String {
+        String(value.prefix(HabitDTO.maxGoalLength))
+    }
+
+    func clampNote(_ value: String) -> String {
+        String(value.prefix(HabitDTO.maxNoteLength))
+    }
+
+    // MARK: - Creación y edición de hábitos
+
+    func createHabit(_ request: CreateHabitRequest) async -> Bool {
+        do {
+            _ = try await habitService.createHabit(request)
+            lastError = nil
+            onHabitsChanged?()
+            return true
+        } catch let error as APIError where error.isBackendUnreachable {
+            connectionErrorPresented = true
+            return false
+        } catch let error as APIError {
+            lastError = error.errorDescription
+            return false
+        } catch {
+            lastError = "No se pudo crear el hábito. Inténtalo de nuevo."
+            return false
+        }
+    }
+
+    func deleteHabit(_ habit: HabitDTO) async -> Bool {
+        do {
+            try await habitService.deleteHabit(id: habit.id)
+            onHabitsChanged?()
+            return true
+        } catch let error as APIError where error.isBackendUnreachable {
+            connectionErrorPresented = true
+            return false
+        } catch {
+            lastError = "No se pudo eliminar el hábito. Inténtalo de nuevo."
+            return false
+        }
+    }
+
+    func archiveHabit(_ habit: HabitDTO) async -> Bool {
+        do {
+            try await habitService.archiveHabit(id: habit.id)
+            onHabitsChanged?()
+            return true
+        } catch let error as APIError where error.isBackendUnreachable {
+            connectionErrorPresented = true
+            return false
+        } catch {
+            lastError = "No se pudo archivar el hábito. Inténtalo de nuevo."
+            return false
+        }
+    }
+
+    func updateHabit(_ habit: HabitDTO, request: UpdateHabitRequest) async -> Bool {
+        do {
+            _ = try await habitService.updateHabit(id: habit.id, request: request)
+            lastError = nil
+            onHabitsChanged?()
+            return true
+        } catch let error as APIError where error.isBackendUnreachable {
+            connectionErrorPresented = true
+            return false
+        } catch let error as APIError {
+            lastError = error.errorDescription
+            return false
+        } catch {
+            lastError = "No se pudo actualizar el hábito. Inténtalo de nuevo."
+            return false
+        }
+    }
+
+    func loadUnits() async -> [UnitDTO] {
+        do {
+            return try await unitService.fetchAllUnits()
+        } catch {
+            return []
+        }
+    }
+
+    /// Carga las unidades para la pantalla de gestión
+    func loadManagedUnits() async -> (units: [UnitDTO], connectionError: Bool) {
+        do {
+            return (try await unitService.fetchAllUnits(), false)
+        } catch let error as APIError where error.isBackendUnreachable {
+            return ([], true)
+        } catch {
+            return ([], false)
+        }
+    }
+    
     // MARK: - Gestión de unidades
 
     /// Resultado de una operación de unidad. La vista gestiona sus
@@ -107,117 +215,6 @@ class HabitViewModel {
             return .failure("No se pudo eliminar la unidad. Inténtalo de nuevo.")
         } catch {
             return .failure("No se pudo eliminar la unidad. Inténtalo de nuevo.")
-        }
-    }
-
-    // MARK: - Validación
-
-    func isValidHabit(
-        name: String,
-        selectedDays: Set<WeekDay>,
-        type: HabitType,
-        dailyGoal: Double?
-    ) -> Bool {
-        let hasName = !name.trimmingCharacters(in: .whitespaces).isEmpty
-        let hasDays = !selectedDays.isEmpty
-        let hasGoalIfNeeded = type == .boolean || (dailyGoal ?? 0) > 0
-        return hasName && hasDays && hasGoalIfNeeded
-    }
-
-    func clampName(_ value: String) -> String {
-        String(value.prefix(HabitDTO.maxNameLength))
-    }
-
-    func clampGoal(_ value: String) -> String {
-        String(value.prefix(HabitDTO.maxGoalLength))
-    }
-
-    func clampNote(_ value: String) -> String {
-        String(value.prefix(HabitDTO.maxNoteLength))
-    }
-
-    // MARK: - Creación y edición de hábitos
-
-    func createHabit(_ request: CreateHabitRequest) async -> Bool {
-        do {
-            let created = try await habitService.createHabit(request)
-            lastError = nil
-            onHabitCreated?(created)
-            return true
-        } catch let error as APIError where error.isBackendUnreachable {
-            connectionErrorPresented = true
-            return false
-        } catch let error as APIError {
-            lastError = error.errorDescription
-            return false
-        } catch {
-            lastError = "No se pudo crear el hábito. Inténtalo de nuevo."
-            return false
-        }
-    }
-
-    func deleteHabit(_ habit: HabitDTO) async -> Bool {
-        do {
-            try await habitService.deleteHabit(id: habit.id)
-            onHabitDeleted?(habit)
-            return true
-        } catch let error as APIError where error.isBackendUnreachable {
-            connectionErrorPresented = true
-            return false
-        } catch {
-            lastError = "No se pudo eliminar el hábito. Inténtalo de nuevo."
-            return false
-        }
-    }
-
-    func archiveHabit(_ habit: HabitDTO) async -> Bool {
-        do {
-            try await habitService.archiveHabit(id: habit.id)
-            onHabitArchived?(habit)
-            return true
-        } catch let error as APIError where error.isBackendUnreachable {
-            connectionErrorPresented = true
-            return false
-        } catch {
-            lastError = "No se pudo archivar el hábito. Inténtalo de nuevo."
-            return false
-        }
-    }
-
-    func updateHabit(_ habit: HabitDTO, request: UpdateHabitRequest) async -> Bool {
-        do {
-            let updated = try await habitService.updateHabit(id: habit.id, request: request)
-            lastError = nil
-            onHabitUpdated?(updated)
-            return true
-        } catch let error as APIError where error.isBackendUnreachable {
-            connectionErrorPresented = true
-            return false
-        } catch let error as APIError {
-            lastError = error.errorDescription
-            return false
-        } catch {
-            lastError = "No se pudo actualizar el hábito. Inténtalo de nuevo."
-            return false
-        }
-    }
-
-    func loadUnits() async -> [UnitDTO] {
-        do {
-            return try await unitService.fetchAllUnits()
-        } catch {
-            return []
-        }
-    }
-
-    /// Carga las unidades para la pantalla de gestión
-    func loadManagedUnits() async -> (units: [UnitDTO], connectionError: Bool) {
-        do {
-            return (try await unitService.fetchAllUnits(), false)
-        } catch let error as APIError where error.isBackendUnreachable {
-            return ([], true)
-        } catch {
-            return ([], false)
         }
     }
 }
