@@ -13,6 +13,7 @@ export const bootEnv = {
 
   // Database
   DATABASE_URL: process.env.DATABASE_URL,
+  DATABASE_URL_TEST: process.env.DATABASE_URL_TEST,
 
   // Bussiness Rules
   MAX_UNITS_PER_USER: parseInt(process.env.MAX_UNITS_PER_USER || "20", 10),
