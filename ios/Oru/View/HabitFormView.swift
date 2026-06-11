@@ -430,7 +430,6 @@ extension WeekDay {
     let unitService = UnitService(client: client)
     HabitFormView(
         viewModel: HabitViewModel(
-            repository: HabitRepository(modelContext: context),
             habitService: habitService,
             unitService: unitService
         )

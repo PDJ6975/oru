@@ -648,7 +648,6 @@ private struct HomePreview: View {
         self.context = context
         let client = APIClient(tokenStore: TokenStore())
         _habitVM = State(initialValue: HabitViewModel(
-            repository: HabitRepository(modelContext: context),
             habitService: HabitService(client: client),
             unitService: UnitService(client: client)
         ))

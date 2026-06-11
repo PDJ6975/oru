@@ -1,81 +1,23 @@
 import SwiftUI
-import SwiftData
 
 @Observable
 class HabitViewModel {
 
-    private let repository: HabitRepositoryProtocol
     private let habitService: HabitService
     private let unitService: UnitService
 
     var lastError: String?
     var connectionErrorPresented = false
     var consolidatedHabit: HabitDTO?
-    var onHabitChanged: ((_ allCompleted: Bool) -> Void)?
     var onHabitCreated: ((HabitDTO) -> Void)?
     var onHabitDeleted: ((HabitDTO) -> Void)?
     var onHabitUpdated: ((HabitDTO) -> Void)?
     var onHabitArchived: ((HabitDTO) -> Void)?
     var onHabitToggled: ((HabitDTO) -> Void)?
 
-    init(repository: HabitRepositoryProtocol, habitService: HabitService, unitService: UnitService) {
-        self.repository = repository
+    init(habitService: HabitService, unitService: UnitService) {
         self.habitService = habitService
         self.unitService = unitService
-    }
-    
-    // Interruptor de hábitos booleanos
-    // Si existe un Compliance en el día actual -> lo invierte
-    // Si no existe -> Crea un compliance para hoy como completado
-    func toggleBoolean(for habit: Habit) {
-        if let compliance = todayCompliance(for: habit) {
-            compliance.completed.toggle()
-        } else {
-            let compliance = Compliance(date: .now, completed: true)
-            habit.compliances.append(compliance)
-        }
-        do {
-            habit.updateConsolidationStatus()
-            try repository.saveChanges()
-        } catch {
-            lastError = "No se pudo guardar el cambio: \(error.localizedDescription)"
-        }
-        onHabitChanged?(checkAllCompleted())
-    }
-
-    // Si la cantidad es 0 y ya existe un compliance, lo elimina
-    // Si la cantidad es > 0, crea o actualiza el compliance
-    func recordAmount(_ amount: Double, for habit: Habit) {
-        do {
-            if amount <= 0 {
-                if let compliance = todayCompliance(for: habit) {
-                    habit.compliances.removeAll { $0 === compliance }
-                    try repository.deleteCompliance(compliance)
-                }
-            } else if let compliance = todayCompliance(for: habit) {
-                compliance.recordedAmount = amount
-                compliance.completed = habit.isGoalMet(amount)
-            } else {
-                let completed = habit.isGoalMet(amount)
-                let compliance = Compliance(date: .now, completed: completed, recordedAmount: amount)
-                habit.compliances.append(compliance)
-            }
-            habit.updateConsolidationStatus()
-            try repository.saveChanges()
-        } catch {
-            lastError = "No se pudo registrar la cantidad: \(error.localizedDescription)"
-        }
-        onHabitChanged?(checkAllCompleted())
-    }
-    private func checkAllCompleted() -> Bool {
-        guard let habits = try? repository.fetchActiveHabits() else { return false }
-        let today = currentWeekday()
-        let scheduled = habits.filter { $0.scheduledDays.contains(today) }
-        return !scheduled.isEmpty && scheduled.allSatisfy { todayCompliance(for: $0)?.completed ?? false }
-    }
-
-    func todayCompliance(for habit: Habit) -> Compliance? {
-        habit.compliances.first { Calendar.current.isDateInToday($0.date) }
     }
 
     func todayCompliance(for habit: HabitDTO) -> ComplianceDTO? {
@@ -109,10 +51,6 @@ class HabitViewModel {
         } catch {
             lastError = "No se pudo registrar el cambio. Inténtalo de nuevo."
         }
-    }
-
-    func currentWeekday() -> Habit.Weekday {
-        weekday(from: .now)
     }
 
     func currentWeekDay() -> WeekDay {
@@ -264,47 +202,6 @@ class HabitViewModel {
         }
     }
 
-    func addHabit(_ habit: Habit) {
-        do {
-            try repository.addHabit(habit)
-        } catch {
-            lastError = "No se pudo crear el hábito: \(error.localizedDescription)"
-        }
-    }
-
-    func archiveHabit(_ habit: Habit) {
-        habit.status = .archived
-        habit.archivedDate = .now
-        do {
-            try repository.saveChanges()
-        } catch {
-            lastError = "No se pudo archivar el hábito: \(error.localizedDescription)"
-        }
-    }
-
-    func deleteHabit(_ habit: Habit) {
-        do {
-            try repository.deleteHabit(habit)
-        } catch {
-            lastError = "No se pudo eliminar el hábito: \(error.localizedDescription)"
-        }
-    }
-
-    func updateHabit(_ habit: Habit, with data: FormData) {
-        habit.icon = data.icon
-        habit.name = data.name
-        habit.type = data.type
-        habit.scheduledDays = data.scheduledDays
-        habit.dailyGoal = data.dailyGoal
-        habit.note = data.note
-        habit.unit = data.unit
-        do {
-            try repository.saveChanges()
-        } catch {
-            lastError = "No se pudo actualizar el hábito: \(error.localizedDescription)"
-        }
-    }
-
     func loadUnits() async -> [UnitDTO] {
         do {
             return try await unitService.fetchAllUnits()
@@ -322,17 +219,5 @@ class HabitViewModel {
         } catch {
             return ([], false)
         }
-    }
-
-    // MARK: - Tipos auxiliares
-
-    struct FormData {
-        let icon: String
-        let name: String
-        let type: Habit.HabitType
-        let scheduledDays: [Habit.Weekday]
-        let dailyGoal: Double?
-        let note: String?
-        let unit: Unit?
     }
 }

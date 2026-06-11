@@ -56,7 +56,6 @@ struct MainTabView: View {
             }
             if habitVM == nil {
                 let hvm = HabitViewModel(
-                    repository: HabitRepository(modelContext: modelContext),
                     habitService: dependencies.habitService,
                     unitService: dependencies.unitService
                 )
