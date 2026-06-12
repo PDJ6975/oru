@@ -117,7 +117,7 @@ describe("integración hábitos <-> origami (bonus diario)", () => {
     expect(await activeProgress(user.userId)).toBe(0);
   });
 
-  it("al cambiar de origami el bonus no se duplica pero se puede revertir y reaplicar", async () => {
+  it("PA-004 - al cambiar de origami el bonus no se duplica pero se puede revertir y reaplicar", async () => {
     await seedAssignment(user.userId, { origamiName: "mariposa", progress: 0 });
     const habit = await seedHabit(user.userId);
 
@@ -156,7 +156,7 @@ describe("integración temporizador -> hábitos", () => {
 
   afterAll(disconnect);
 
-  it("acumula varias sesiones en el registro diario y completa el hábito", async () => {
+  it("PA-003 - acumula varias sesiones en el registro diario y completa el hábito", async () => {
     const min = await getBaseUnit("min");
     const habit = await seedHabit(user.userId, {
       type: HabitType.QUANTITY,

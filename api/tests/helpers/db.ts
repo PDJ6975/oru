@@ -1,6 +1,6 @@
+import { seedBaseData } from "../../prisma/utils.js";
 import { prisma } from "../../src/db/prisma.js";
 import * as userService from "../../src/services/user.service.js";
-import { seedBaseData } from "../../prisma/utils.js";
 
 const TABLES = [
   "TimerSession",
