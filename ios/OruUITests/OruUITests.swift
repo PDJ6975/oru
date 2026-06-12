@@ -53,6 +53,38 @@ final class OruUITests: XCTestCase {
     // MARK: - Tests
     
     @MainActor
+    func testPI_004_OnboardingFlow() throws {
+        let freshApp = XCUIApplication()
+        freshApp.launchArguments = ["-resetOnboarding"]
+        freshApp.launch()
+
+        // ── Welcome ──
+        XCTAssertTrue(
+            freshApp.staticTexts["Da forma a tu mejor versión"].waitForExistence(timeout: 5),
+            "La pantalla de bienvenida debe mostrarse"
+        )
+        freshApp.buttons["Empezar ahora"].firstMatch.tap()
+
+        // ── Registro de nombre ──
+        let nameField = freshApp.textFields["Tu nombre"].firstMatch
+        XCTAssertTrue(nameField.waitForExistence(timeout: 5), "La pantalla de registro debe mostrarse")
+        
+        
+        nameField.tap()
+        nameField.typeText("Test")
+
+        let continueButton = freshApp.buttons["Continuar"].firstMatch
+        XCTAssertTrue(continueButton.waitForExistence(timeout: 5), "El botón Continuar debe existir")
+        continueButton.tap()
+
+        // ── Home ──
+        XCTAssertTrue(
+            freshApp.staticTexts["Para hoy"].waitForExistence(timeout: 5),
+            "Debe llegar a la pantalla de inicio tras el onboarding"
+        )
+    }
+    
+    @MainActor
     func testPI_001_QuantityHabitWithTimerFlow() throws {
         launchWithOnboardingDone()
         // ── Crear hábito con unidad de tiempo ──
@@ -206,38 +238,6 @@ final class OruUITests: XCTestCase {
         pagsCell.swipeLeft()
         app.buttons["trash"].firstMatch.tap()
         app.buttons["Eliminar"].firstMatch.tap()
-    }
-    
-    @MainActor
-    func testPI_004_OnboardingFlow() throws {
-        let freshApp = XCUIApplication()
-        freshApp.launchArguments = ["-resetOnboarding"]
-        freshApp.launch()
-
-        // ── Welcome ──
-        XCTAssertTrue(
-            freshApp.staticTexts["Da forma a tu mejor versión"].waitForExistence(timeout: 5),
-            "La pantalla de bienvenida debe mostrarse"
-        )
-        freshApp.buttons["Empezar ahora"].firstMatch.tap()
-
-        // ── Registro de nombre ──
-        let nameField = freshApp.textFields["Tu nombre"].firstMatch
-        XCTAssertTrue(nameField.waitForExistence(timeout: 5), "La pantalla de registro debe mostrarse")
-        
-        
-        nameField.tap()
-        nameField.typeText("Test")
-
-        let continueButton = freshApp.buttons["Continuar"].firstMatch
-        XCTAssertTrue(continueButton.waitForExistence(timeout: 5), "El botón Continuar debe existir")
-        continueButton.tap()
-
-        // ── Home ──
-        XCTAssertTrue(
-            freshApp.staticTexts["Para hoy"].waitForExistence(timeout: 5),
-            "Debe llegar a la pantalla de inicio tras el onboarding"
-        )
     }
 
     @MainActor
