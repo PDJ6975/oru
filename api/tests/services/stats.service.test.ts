@@ -1,15 +1,15 @@
 import { previousMonday, startOfDay, subDays, subWeeks } from "date-fns";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
-import { prisma } from "../src/db/prisma.js";
-import { WeekDay } from "../src/generated/prisma/enums.js";
-import * as statsService from "../src/services/stats.service.js";
+import { prisma } from "../../src/db/prisma.js";
+import { WeekDay } from "../../src/generated/prisma/enums.js";
+import * as statsService from "../../src/services/stats.service.js";
 import {
   createTestUser,
   disconnect,
   resetDb,
   type TestUser,
-} from "./helpers/db.js";
-import { seedCompliance, seedHabit, today } from "./helpers/factories.js";
+} from "../helpers/db.js";
+import { seedCompliance, seedHabit, today } from "../helpers/factories.js";
 
 const YEAR = new Date().getFullYear();
 const day = (n: number) => subDays(today(), n); // hace n días (a las 00:00)

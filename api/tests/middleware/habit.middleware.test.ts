@@ -1,15 +1,15 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
-import { prisma } from "../src/db/prisma.js";
-import { HabitStatus, HabitType } from "../src/generated/prisma/enums.js";
+import { prisma } from "../../src/db/prisma.js";
+import { HabitStatus, HabitType } from "../../src/generated/prisma/enums.js";
 import {
   createTestUser,
   disconnect,
   getBaseUnit,
   resetDb,
   type TestUser,
-} from "./helpers/db.js";
-import { ALL_DAYS, daysExceptToday, seedHabit } from "./helpers/factories.js";
-import { authedRequest } from "./helpers/http.js";
+} from "../helpers/db.js";
+import { ALL_DAYS, daysExceptToday, seedHabit } from "../helpers/factories.js";
+import { authedRequest } from "../helpers/http.js";
 
 describe("habit middlewares", () => {
   let user: TestUser;

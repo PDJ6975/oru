@@ -1,12 +1,12 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
-import { BASE_UNITS } from "../prisma/utils.js";
-import * as unitService from "../src/services/unit.service.js";
+import { BASE_UNITS } from "../../prisma/utils.js";
+import * as unitService from "../../src/services/unit.service.js";
 import {
   createTestUser,
   disconnect,
   resetDb,
   type TestUser,
-} from "./helpers/db.js";
+} from "../helpers/db.js";
 
 describe("unit.service", () => {
   let user: TestUser;

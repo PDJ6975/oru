@@ -1,18 +1,18 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
-import { HabitStatus, HabitType } from "../src/generated/prisma/enums.js";
+import { HabitStatus, HabitType } from "../../src/generated/prisma/enums.js";
 import {
   createTestUser,
   disconnect,
   getBaseUnit,
   resetDb,
   type TestUser,
-} from "./helpers/db.js";
+} from "../helpers/db.js";
 import {
   daysExceptToday,
   seedHabit,
   seedTimerSession,
-} from "./helpers/factories.js";
-import { authedRequest } from "./helpers/http.js";
+} from "../helpers/factories.js";
+import { authedRequest } from "../helpers/http.js";
 
 describe("timer middlewares", () => {
   let user: TestUser;

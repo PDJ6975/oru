@@ -1,11 +1,11 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
-import * as userService from "../src/services/user.service.js";
+import * as userService from "../../src/services/user.service.js";
 import {
   createTestUser,
   disconnect,
   resetDb,
   type TestUser,
-} from "./helpers/db.js";
+} from "../helpers/db.js";
 
 describe("user.service", () => {
   let user: TestUser;

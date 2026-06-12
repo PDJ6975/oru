@@ -4,15 +4,15 @@ import {
   HabitStatus,
   HabitType,
   WeekDay,
-} from "../src/generated/prisma/enums.js";
-import * as habitService from "../src/services/habit.service.js";
+} from "../../src/generated/prisma/enums.js";
+import * as habitService from "../../src/services/habit.service.js";
 import {
   createTestUser,
   disconnect,
   getBaseUnit,
   resetDb,
   type TestUser,
-} from "./helpers/db.js";
+} from "../helpers/db.js";
 import {
   ALL_DAYS,
   daysExceptToday,
@@ -21,7 +21,7 @@ import {
   seedHabit,
   today,
   todayCompliance,
-} from "./helpers/factories.js";
+} from "../helpers/factories.js";
 
 describe("habit.service", () => {
   let user: TestUser;

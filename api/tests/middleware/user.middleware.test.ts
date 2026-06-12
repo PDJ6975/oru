@@ -1,8 +1,8 @@
 import request from "supertest";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
-import app from "../src/app.js";
-import { createTestUser, disconnect, resetDb } from "./helpers/db.js";
-import { authedRequest } from "./helpers/http.js";
+import app from "../../src/app.js";
+import { createTestUser, disconnect, resetDb } from "../helpers/db.js";
+import { authedRequest } from "../helpers/http.js";
 
 describe("user middlewares", () => {
   beforeEach(async () => {

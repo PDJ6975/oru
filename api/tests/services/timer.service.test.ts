@@ -1,13 +1,13 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
-import * as timerRepository from "../src/repositories/timer.repository.js";
-import * as timerService from "../src/services/timer.service.js";
+import * as timerRepository from "../../src/repositories/timer.repository.js";
+import * as timerService from "../../src/services/timer.service.js";
 import {
   createTestUser,
   disconnect,
   resetDb,
   type TestUser,
-} from "./helpers/db.js";
-import { seedTimerSession } from "./helpers/factories.js";
+} from "../helpers/db.js";
+import { seedTimerSession } from "../helpers/factories.js";
 
 const HOUR_MS = 60 * 60 * 1000;
 

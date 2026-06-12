@@ -1,13 +1,13 @@
 import request from "supertest";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
-import app from "../src/app.js";
+import app from "../../src/app.js";
 import {
   createTestUser,
   disconnect,
   resetDb,
   type TestUser,
-} from "./helpers/db.js";
-import { authedRequest } from "./helpers/http.js";
+} from "../helpers/db.js";
+import { authedRequest } from "../helpers/http.js";
 
 describe("user controller (E2E)", () => {
   let user: TestUser;

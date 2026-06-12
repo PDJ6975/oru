@@ -1,16 +1,16 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
-import { prisma } from "../src/db/prisma.js";
-import { HabitType } from "../src/generated/prisma/enums.js";
-import * as habitService from "../src/services/habit.service.js";
-import * as origamiService from "../src/services/origami.service.js";
-import * as timerService from "../src/services/timer.service.js";
+import { prisma } from "../../src/db/prisma.js";
+import { HabitType } from "../../src/generated/prisma/enums.js";
+import * as habitService from "../../src/services/habit.service.js";
+import * as origamiService from "../../src/services/origami.service.js";
+import * as timerService from "../../src/services/timer.service.js";
 import {
   createTestUser,
   disconnect,
   getBaseUnit,
   resetDb,
   type TestUser,
-} from "./helpers/db.js";
+} from "../helpers/db.js";
 import {
   ALL_DAYS,
   daysExceptToday,
@@ -20,7 +20,7 @@ import {
   seedTimerSession,
   today,
   todayCompliance,
-} from "./helpers/factories.js";
+} from "../helpers/factories.js";
 
 describe("integración hábitos <-> origami (bonus diario)", () => {
   let user: TestUser;

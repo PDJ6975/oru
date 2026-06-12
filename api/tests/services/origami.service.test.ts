@@ -1,18 +1,18 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
-import { prisma } from "../src/db/prisma.js";
-import * as origamiService from "../src/services/origami.service.js";
+import { prisma } from "../../src/db/prisma.js";
+import * as origamiService from "../../src/services/origami.service.js";
 import {
   createTestUser,
   disconnect,
   resetDb,
   type TestUser,
-} from "./helpers/db.js";
+} from "../helpers/db.js";
 import {
   seedAssignment,
   seedCompliance,
   seedHabit,
   today,
-} from "./helpers/factories.js";
+} from "../helpers/factories.js";
 
 describe("origami.service", () => {
   let user: TestUser;
@@ -184,15 +184,16 @@ describe("origami.service", () => {
       [70, 5],
     ] as const;
 
-    it.each(
-      cases,
-    )("una sesión de %i minutos suma %i de progreso", async (minutes, bonus) => {
-      await seedAssignment(user.userId, { progress: 0 });
+    it.each(cases)(
+      "una sesión de %i minutos suma %i de progreso",
+      async (minutes, bonus) => {
+        await seedAssignment(user.userId, { progress: 0 });
 
-      await origamiService.applyBonusForSession(user.userId, minutes);
+        await origamiService.applyBonusForSession(user.userId, minutes);
 
-      expect(await activeProgress(user.userId)).toBe(bonus);
-    });
+        expect(await activeProgress(user.userId)).toBe(bonus);
+      },
+    );
   });
 
   it("getOrigamisCompletedInAYear devuelve los completados del año", async () => {

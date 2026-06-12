@@ -4,8 +4,8 @@ import {
   disconnect,
   resetDb,
   type TestUser,
-} from "./helpers/db.js";
-import { authedRequest } from "./helpers/http.js";
+} from "../helpers/db.js";
+import { authedRequest } from "../helpers/http.js";
 
 describe("stats controller (E2E)", () => {
   let user: TestUser;

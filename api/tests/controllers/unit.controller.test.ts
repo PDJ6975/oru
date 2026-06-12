@@ -1,13 +1,13 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
-import { BASE_UNITS } from "../prisma/utils.js";
+import { BASE_UNITS } from "../../prisma/utils.js";
 import {
   createTestUser,
   disconnect,
   resetDb,
   type TestUser,
-} from "./helpers/db.js";
-import { seedUnit } from "./helpers/factories.js";
-import { authedRequest } from "./helpers/http.js";
+} from "../helpers/db.js";
+import { seedUnit } from "../helpers/factories.js";
+import { authedRequest } from "../helpers/http.js";
 
 describe("unit controller (E2E)", () => {
   let user: TestUser;

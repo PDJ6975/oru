@@ -4,9 +4,9 @@ import {
   disconnect,
   resetDb,
   type TestUser,
-} from "./helpers/db.js";
-import { seedAssignment } from "./helpers/factories.js";
-import { authedRequest } from "./helpers/http.js";
+} from "../helpers/db.js";
+import { seedAssignment } from "../helpers/factories.js";
+import { authedRequest } from "../helpers/http.js";
 
 const CATALOG = ["mariposa", "bailarina", "flor", "luna"];
 
