@@ -53,7 +53,7 @@ final class OruUITests: XCTestCase {
     // MARK: - Tests
     
     @MainActor
-    func PI_001_testQuantityHabitWithTimerFlow() throws {
+    func testPI_001_QuantityHabitWithTimerFlow() throws {
         launchWithOnboardingDone()
         // ── Crear hábito con unidad de tiempo ──
         openCreationForm(name: "tiempo")
@@ -100,7 +100,7 @@ final class OruUITests: XCTestCase {
     }
 
     @MainActor
-    func PI_002_testBooleanHabitFullFlow() throws {
+    func testPI_002_BooleanHabitFullFlow() throws {
         launchWithOnboardingDone()
         // ── Crear ──
         openCreationForm(name: "prueba")
@@ -151,7 +151,7 @@ final class OruUITests: XCTestCase {
     }
     
     @MainActor
-    func PI_003_testQuantityHabitWithCustomUnit() throws {
+    func testPI_003_QuantityHabitWithCustomUnit() throws {
         launchWithOnboardingDone()
         // ── Crear con unidad personalizada ──
         openCreationForm(name: "lectura")
@@ -209,7 +209,7 @@ final class OruUITests: XCTestCase {
     }
     
     @MainActor
-    func PI_004testOnboardingFlow() throws {
+    func testPI_004_OnboardingFlow() throws {
         let freshApp = XCUIApplication()
         freshApp.launchArguments = ["-resetOnboarding"]
         freshApp.launch()
@@ -241,7 +241,7 @@ final class OruUITests: XCTestCase {
     }
 
     @MainActor
-    func PI_005_testMainScreensNavigation() throws {
+    func testPI_005_MainScreensNavigation() throws {
         launchWithOnboardingDone()
         let tabBar = app.tabBars.firstMatch
         XCTAssertTrue(tabBar.waitForExistence(timeout: 5), "La tab bar debe ser visible tras el arranque")

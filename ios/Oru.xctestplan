@@ -30,14 +30,6 @@
       "parallelizable" : true,
       "target" : {
         "containerPath" : "container:Oru.xcodeproj",
-        "identifier" : "3BC17C452F543B7E009DD857",
-        "name" : "OruTests"
-      }
-    },
-    {
-      "parallelizable" : true,
-      "target" : {
-        "containerPath" : "container:Oru.xcodeproj",
         "identifier" : "3BAD71CB2FA4C76200F8F8A5",
         "name" : "OruUITests"
       }
