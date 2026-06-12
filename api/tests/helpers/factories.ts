@@ -23,6 +23,13 @@ export type HabitSeed = {
   createdAt?: Date;
 };
 
+export type AssignmentSeed = {
+  origamiName?: string;
+  progress?: number;
+  revealedPhase?: number;
+  completedAt?: Date | null;
+};
+
 export const seedHabit = (userId: number, opts: HabitSeed = {}) =>
   prisma.habit.create({
     data: {
@@ -67,3 +74,23 @@ export const todayCompliance = (habit: {
     recordedAmount: number | null;
   }[];
 }) => habit.compliances.find((c) => isSameDay(new Date(c.date), new Date()));
+
+export const getOrigami = (name: string) =>
+  prisma.origami.findFirstOrThrow({ where: { name } });
+
+export const seedAssignment = async (
+  userId: number,
+  opts: AssignmentSeed = {},
+) => {
+  const origami = await getOrigami(opts.origamiName ?? "mariposa");
+  return prisma.assignment.create({
+    data: {
+      userId,
+      origamiId: origami.id,
+      progress: opts.progress ?? 0,
+      revealedPhase: opts.revealedPhase ?? 0,
+      completedAt: opts.completedAt ?? null,
+    },
+    include: { origami: true },
+  });
+};
