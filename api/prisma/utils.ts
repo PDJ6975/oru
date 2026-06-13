@@ -1,7 +1,12 @@
+import { addDays, startOfDay } from "date-fns";
+import { bootEnv } from "../src/config/bootConfig.js";
 import { logger } from "../src/config/logger.js";
 import { prisma } from "../src/db/prisma.js";
+import { WeekDay } from "../src/generated/prisma/enums.js";
+import { getNextThreshold } from "../src/services/origami.service.js";
+import * as userService from "../src/services/user.service.js";
+import { toWeekDay } from "../src/utils/weekday.js";
 
-// Datos base sembrados en la BD. Compartidos entre prisma/seed.ts y los tests.
 export const BASE_UNITS = [
   "uds",
   "min",
@@ -22,8 +27,6 @@ export const ORIGAMI_CATALOG = [
   { name: "luna", phases: 6 },
 ];
 
-// Siembra idempotente de los datos base (unidades base y catálogo de origamis).
-// Reutilizada por el seed de producción y por el reseteo de la BD de test.
 export async function seedBaseData() {
   for (const name of BASE_UNITS) {
     const existingUnit = await prisma.unit.findFirst({
@@ -45,173 +48,426 @@ export async function seedBaseData() {
 }
 
 export async function seedDevData() {
-  const existingUser = await prisma.user.findFirst({
-    where: { name: "Test User" },
-  });
-  if (existingUser) return;
+  await prisma.user.deleteMany({ where: { name: "Test User" } });
 
-  const user = await prisma.user.create({
-    data: {
-      name: "Test User",
-      lastComputedDay: new Date(),
-    },
-  });
+  const token = await userService.createUser("Test User");
+  const session = await userService.getSessionByToken(token);
+
+  const userId = session!.userId;
+  await userService.updateLastComputedDay(userId, new Date());
 
   const allDays = [
-    "MONDAY",
-    "TUESDAY",
-    "WEDNESDAY",
-    "THURSDAY",
-    "FRIDAY",
-    "SATURDAY",
-    "SUNDAY",
+    WeekDay.MONDAY,
+    WeekDay.TUESDAY,
+    WeekDay.WEDNESDAY,
+    WeekDay.THURSDAY,
+    WeekDay.FRIDAY,
+    WeekDay.SATURDAY,
+    WeekDay.SUNDAY,
   ] as const;
   const weekdays = allDays.slice(0, 5);
 
-  const activeHabits = [
-    {
-      icon: "🏃",
-      name: "Correr",
-      type: "QUANTITY" as const,
-      dailyGoal: 5,
-      unitName: "km",
-    },
+  const currentYear = new Date().getFullYear();
+  const previousYear = currentYear - 1;
+
+  const createdAtPrev = new Date(previousYear, 0, 1);
+  const createdAtCurr = new Date(currentYear, 0, 1);
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const today = startOfDay(new Date());
+  const todayWeekday = toWeekDay(today);
+  const daysExceptToday = allDays.filter((day) => day !== todayWeekday);
+
+  type TodayCompliance = {
+    isCompleted: boolean;
+    recordedAmount: number | null;
+  };
+
+  type YearStats = {
+    currentStreak: number;
+    bestStreak: number;
+    totalCompletions: number;
+    totalAccumulation: number;
+    recordedDays: number;
+  };
+  type SeedHabit = {
+    icon: string;
+    name: string;
+    type: "QUANTITY" | "BOOLEAN";
+    dailyGoal: number | null;
+    unitName: string | null;
+    note: string | null;
+    today: TodayCompliance | null;
+    statsPrev?: YearStats;
+    statsCurr: YearStats;
+    notScheduledToday?: boolean;
+    isConsolidated?: boolean;
+    pastCompletedCompliances?: number;
+    randomPastCompliances?: boolean;
+  };
+
+  const activeHabits: SeedHabit[] = [
     {
       icon: "📖",
       name: "Leer",
-      type: "QUANTITY" as const,
+      type: "QUANTITY",
       dailyGoal: 30,
       unitName: "min",
+      note: "El príncipe cruel",
+      today: { isCompleted: true, recordedAmount: 30 },
+      randomPastCompliances: true,
+      statsPrev: {
+        currentStreak: 7,
+        bestStreak: 40,
+        totalCompletions: 251,
+        totalAccumulation: 9180,
+        recordedDays: 290,
+      },
+      statsCurr: {
+        currentStreak: 7,
+        bestStreak: 26,
+        totalCompletions: 108,
+        totalAccumulation: 4050,
+        recordedDays: 129,
+      },
     },
     {
-      icon: "🧘",
-      name: "Meditar",
-      type: "BOOLEAN" as const,
+      icon: "🌸",
+      name: "Cuidar jardín",
+      type: "BOOLEAN",
       dailyGoal: null,
       unitName: null,
+      note: null,
+      today: { isCompleted: true, recordedAmount: null },
+      randomPastCompliances: true,
+      statsPrev: {
+        currentStreak: 18,
+        bestStreak: 63,
+        totalCompletions: 300,
+        totalAccumulation: 0,
+        recordedDays: 0,
+      },
+      statsCurr: {
+        currentStreak: 18,
+        bestStreak: 34,
+        totalCompletions: 132,
+        totalAccumulation: 0,
+        recordedDays: 0,
+      },
     },
     {
-      icon: "💧",
-      name: "Beber agua",
-      type: "QUANTITY" as const,
-      dailyGoal: 8,
-      unitName: "uds",
+      icon: "💻",
+      name: "Programar",
+      type: "QUANTITY",
+      dailyGoal: 20,
+      unitName: "min",
+      note: "API de hábitos",
+      today: { isCompleted: true, recordedAmount: 25 },
+      randomPastCompliances: true,
+      statsCurr: {
+        currentStreak: 5,
+        bestStreak: 22,
+        totalCompletions: 110,
+        totalAccumulation: 3050,
+        recordedDays: 130,
+      },
+    },
+    {
+      icon: "🏀",
+      name: "Entrenar baloncesto",
+      type: "BOOLEAN",
+      dailyGoal: null,
+      unitName: null,
+      note: null,
+      today: null,
+      pastCompletedCompliances: 65,
+      statsCurr: {
+        currentStreak: 9,
+        bestStreak: 28,
+        totalCompletions: 120,
+        totalAccumulation: 0,
+        recordedDays: 0,
+      },
+    },
+    {
+      icon: "🧘🏻",
+      name: "Meditar",
+      type: "BOOLEAN",
+      dailyGoal: null,
+      unitName: null,
+      note: null,
+      today: null,
+      notScheduledToday: true,
+      statsCurr: {
+        currentStreak: 0,
+        bestStreak: 14,
+        totalCompletions: 60,
+        totalAccumulation: 0,
+        recordedDays: 0,
+      },
+    },
+    {
+      icon: "🏃🏻",
+      name: "Correr",
+      type: "QUANTITY",
+      dailyGoal: 3,
+      unitName: "km",
+      note: null,
+      today: null,
+      notScheduledToday: true,
+      statsCurr: {
+        currentStreak: 0,
+        bestStreak: 16,
+        totalCompletions: 70,
+        totalAccumulation: 255,
+        recordedDays: 80,
+      },
     },
   ];
 
-  const archivedHabits = [
+  const archivedHabits: SeedHabit[] = [
     {
       icon: "🎸",
       name: "Practicar guitarra",
-      type: "QUANTITY" as const,
+      type: "QUANTITY",
       dailyGoal: 20,
       unitName: "min",
+      note: null,
+      today: null,
+      statsPrev: {
+        currentStreak: 0,
+        bestStreak: 23,
+        totalCompletions: 178,
+        totalAccumulation: 3760,
+        recordedDays: 205,
+      },
+      statsCurr: {
+        currentStreak: 0,
+        bestStreak: 16,
+        totalCompletions: 58,
+        totalAccumulation: 1240,
+        recordedDays: 70,
+      },
     },
     {
       icon: "✍️",
       name: "Escribir diario",
-      type: "BOOLEAN" as const,
+      type: "BOOLEAN",
       dailyGoal: null,
       unitName: null,
+      note: null,
+      today: null,
+      statsPrev: {
+        currentStreak: 0,
+        bestStreak: 52,
+        totalCompletions: 212,
+        totalAccumulation: 0,
+        recordedDays: 0,
+      },
+      statsCurr: {
+        currentStreak: 0,
+        bestStreak: 21,
+        totalCompletions: 69,
+        totalAccumulation: 0,
+        recordedDays: 0,
+      },
+    },
+    {
+      icon: "✏️",
+      name: "Dibujar",
+      type: "BOOLEAN",
+      dailyGoal: null,
+      unitName: null,
+      note: null,
+      today: null,
+      statsCurr: {
+        currentStreak: 0,
+        bestStreak: 12,
+        totalCompletions: 40,
+        totalAccumulation: 0,
+        recordedDays: 0,
+      },
+    },
+    {
+      icon: "🍳",
+      name: "Cocinar saludable",
+      type: "BOOLEAN",
+      dailyGoal: null,
+      unitName: null,
+      note: null,
+      today: null,
+      statsCurr: {
+        currentStreak: 0,
+        bestStreak: 10,
+        totalCompletions: 35,
+        totalAccumulation: 0,
+        recordedDays: 0,
+      },
     },
   ];
 
+  const resolveUnitId = async (unitName: string | null) => {
+    if (!unitName) return null;
+    const unit = await prisma.unit.findFirst({
+      where: { name: unitName, userId: null },
+    });
+    return unit?.id ?? null;
+  };
+
+  const seedHabit = async (
+    h: SeedHabit,
+    status: "ACTIVE" | "ARCHIVED",
+    scheduledDays: readonly WeekDay[],
+  ) => {
+    const habit = await prisma.habit.create({
+      data: {
+        icon: h.icon,
+        name: h.name,
+        type: h.type,
+        dailyGoal: h.dailyGoal,
+        note: h.note,
+        status,
+        isConsolidated: h.isConsolidated ?? status === "ARCHIVED",
+        createdAt: h.statsPrev ? createdAtPrev : createdAtCurr,
+        archivedAt: status === "ARCHIVED" ? thirtyDaysAgo : null,
+        userId,
+        unitId: await resolveUnitId(h.unitName),
+        scheduledDays: {
+          create: scheduledDays.map((day) => ({ day })),
+        },
+        stats: {
+          create: [
+            ...(h.statsPrev ? [{ year: previousYear, ...h.statsPrev }] : []),
+            { year: currentYear, ...h.statsCurr },
+          ],
+        },
+      },
+    });
+
+    if (status === "ACTIVE" && h.today) {
+      await prisma.compliance.create({
+        data: {
+          date: today,
+          isCompleted: h.today.isCompleted,
+          recordedAmount: h.today.recordedAmount,
+          habitId: habit.id,
+        },
+      });
+    }
+
+    if (h.pastCompletedCompliances) {
+      await prisma.compliance.createMany({
+        data: Array.from({ length: h.pastCompletedCompliances }, (_, i) => ({
+          date: addDays(today, -(i + 1)),
+          isCompleted: true,
+          recordedAmount: null,
+          habitId: habit.id,
+        })),
+      });
+    }
+
+    if (h.randomPastCompliances) {
+      const windowDays = 90;
+      const goal = h.dailyGoal ?? 0;
+      const data: Array<{
+        date: Date;
+        isCompleted: boolean;
+        recordedAmount: number | null;
+        habitId: number;
+      }> = [];
+      for (let i = 1; i <= windowDays; i++) {
+        if (Math.random() > 0.4) continue;
+        if (h.type === "QUANTITY") {
+          const amount = Math.round(goal * (0.4 + Math.random() * 1.1));
+          data.push({
+            date: addDays(today, -i),
+            isCompleted: amount >= goal,
+            recordedAmount: amount,
+            habitId: habit.id,
+          });
+        } else {
+          data.push({
+            date: addDays(today, -i),
+            isCompleted: true,
+            recordedAmount: null,
+            habitId: habit.id,
+          });
+        }
+      }
+      if (data.length > 0) await prisma.compliance.createMany({ data });
+    }
+  };
+
   for (const h of activeHabits) {
-    const unit = h.unitName
-      ? await prisma.unit.findFirst({
-          where: { name: h.unitName, userId: null },
-        })
-      : null;
-
-    await prisma.habit.create({
-      data: {
-        icon: h.icon,
-        name: h.name,
-        type: h.type,
-        dailyGoal: h.dailyGoal,
-        status: "ACTIVE",
-        userId: user.id,
-        unitId: unit?.id ?? null,
-        scheduledDays: {
-          create: allDays.map((day) => ({ day })),
-        },
-      },
-    });
+    const days = h.notScheduledToday ? daysExceptToday : allDays;
+    await seedHabit(h, "ACTIVE", days);
   }
+  for (const h of archivedHabits) await seedHabit(h, "ARCHIVED", weekdays);
 
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-  for (const h of archivedHabits) {
-    const unit = h.unitName
-      ? await prisma.unit.findFirst({
-          where: { name: h.unitName, userId: null },
-        })
-      : null;
-
-    await prisma.habit.create({
-      data: {
-        icon: h.icon,
-        name: h.name,
-        type: h.type,
-        dailyGoal: h.dailyGoal,
-        status: "ARCHIVED",
-        archivedAt: thirtyDaysAgo,
-        userId: user.id,
-        unitId: unit?.id ?? null,
-        scheduledDays: {
-          create: weekdays.map((day) => ({ day })),
-        },
-      },
-    });
-  }
-
-  const previousYear = new Date().getFullYear() - 1;
-  const habits = await prisma.habit.findMany({ where: { userId: user.id } });
-
-  for (const habit of habits) {
-    await prisma.habitStats.create({
-      data: {
+  await prisma.userStats.createMany({
+    data: [
+      {
         year: previousYear,
-        currentStreak: Math.floor(Math.random() * 15) + 1,
-        bestStreak: Math.floor(Math.random() * 30) + 10,
-        totalCompletions: Math.floor(Math.random() * 200) + 50,
-        totalAccumulation: habit.dailyGoal
-          ? Math.floor(Math.random() * 1000) + 100
-          : 0,
-        recordedDays: Math.floor(Math.random() * 200) + 50,
-        habitId: habit.id,
+        currentStreak: 9,
+        bestStreak: 57,
+        habitsCompleted: 1432,
+        perfectDays: 118,
+        totalScheduled: 1980,
+        userId,
       },
-    });
-  }
+      {
+        year: currentYear,
+        currentStreak: 12,
+        bestStreak: 33,
+        habitsCompleted: 1240,
+        perfectDays: 34,
+        totalScheduled: 1820,
+        userId,
+      },
+    ],
+  });
 
-  await prisma.userStats.create({
-    data: {
-      year: previousYear,
-      currentStreak: Math.floor(Math.random() * 20) + 5,
-      bestStreak: Math.floor(Math.random() * 40) + 15,
-      habitsCompleted: Math.floor(Math.random() * 500) + 100,
-      perfectDays: Math.floor(Math.random() * 60) + 10,
-      totalScheduled: Math.floor(Math.random() * 800) + 300,
-      userId: user.id,
+  const bailarinaPhases =
+    ORIGAMI_CATALOG.find((o) => o.name === "bailarina")?.phases ?? 6;
+  const bailarinaRevealedPhase = 0;
+  const bailarinaThreshold =
+    getNextThreshold(bailarinaPhases, bailarinaRevealedPhase) ?? 100;
+
+  const origamiProgress: Array<{
+    name: string;
+    completedAt: Date | null;
+    progress?: number;
+    revealedPhase?: number;
+  }> = [
+    { name: "flor", completedAt: new Date(previousYear, 8, 20) },
+    { name: "mariposa", completedAt: new Date(currentYear, 1, 10) },
+    { name: "luna", completedAt: new Date(currentYear, 3, 5) },
+    {
+      name: "bailarina",
+      completedAt: null,
+      revealedPhase: bailarinaRevealedPhase,
+      progress: bailarinaThreshold - bootEnv.DAILY_BONUS_PROGRESS,
     },
-  });
+  ];
 
-  const origamis = await prisma.origami.findMany({
-    where: { name: { in: ["mariposa", "flor"] } },
-  });
+  for (const op of origamiProgress) {
+    const origami = await prisma.origami.findFirst({
+      where: { name: op.name },
+    });
+    if (!origami) continue;
 
-  for (const origami of origamis) {
+    const completed = op.completedAt != null;
     await prisma.assignment.create({
       data: {
-        progress: origami.phases,
-        revealedPhase: origami.phases,
-        completedAt: new Date(),
-        userId: user.id,
+        progress: completed ? 100 : (op.progress ?? 0),
+        revealedPhase: completed ? origami.phases - 1 : (op.revealedPhase ?? 0),
+        completedAt: op.completedAt,
+        userId,
         origamiId: origami.id,
       },
     });
   }
 
-  logger.info("Dev seed data created for Test User");
+  logger.info(`Usuario de prueba creado con id: ${userId}`);
+  logger.info(`Token del usuario de prueba: ${token}`);
 }

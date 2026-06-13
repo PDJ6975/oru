@@ -5,4 +5,4 @@ API_BASE_URL = http:/$()/localhost:3000/api/v1
 // Token JWT de cuenta seedeada del backend de desarrollo.
 // Al arrancar en DEBUG la app inicia sesión con este token (ver AppDependencies).
 // If vacío -> flujo normal de registro.
-DEV_AUTH_TOKEN =
+DEV_AUTH_TOKEN = 1e2df259ddd7336d16a3cf53ee6950b0a4ae58311c9eb8b82a25cde0d25a0f88
