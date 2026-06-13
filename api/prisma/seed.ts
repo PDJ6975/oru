@@ -1,7 +1,7 @@
+import { seedBaseData, seedDevData } from "../prisma/utils.js";
 import { bootEnv } from "../src/config/bootConfig.js";
 import { logger } from "../src/config/logger.js";
 import { prisma } from "../src/db/prisma.js";
-import { seedBaseData, seedDevData } from "../prisma/utils.js";
 
 async function main() {
   await seedBaseData();
