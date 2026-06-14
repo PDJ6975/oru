@@ -48,9 +48,9 @@ export async function seedBaseData() {
 }
 
 export async function seedDevData() {
-  await prisma.user.deleteMany({ where: { name: "Test User" } });
+  await prisma.user.deleteMany({ where: { name: "pepe" } });
 
-  const token = await userService.createUser("Test User");
+  const token = await userService.createUser("Pepe");
   const session = await userService.getSessionByToken(token);
 
   const userId = session!.userId;
@@ -429,7 +429,7 @@ export async function seedDevData() {
 
   const bailarinaPhases =
     ORIGAMI_CATALOG.find((o) => o.name === "bailarina")?.phases ?? 6;
-  const bailarinaRevealedPhase = 0;
+  const bailarinaRevealedPhase = bailarinaPhases - 2;
   const bailarinaThreshold =
     getNextThreshold(bailarinaPhases, bailarinaRevealedPhase) ?? 100;
 
@@ -439,7 +439,6 @@ export async function seedDevData() {
     progress?: number;
     revealedPhase?: number;
   }> = [
-    { name: "flor", completedAt: new Date(previousYear, 8, 20) },
     { name: "mariposa", completedAt: new Date(currentYear, 1, 10) },
     { name: "luna", completedAt: new Date(currentYear, 3, 5) },
     {

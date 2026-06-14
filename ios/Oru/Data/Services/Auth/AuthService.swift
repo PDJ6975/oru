@@ -17,7 +17,7 @@ final class AuthService {
 
     // DEMO (BORRAR tras grabar): token de la cuenta de test del seed.
     // Pega aquí el token que imprime `seedDevData` en el log.
-    private static let demoTestToken = "1e2df259ddd7336d16a3cf53ee6950b0a4ae58311c9eb8b82a25cde0d25a0f88"
+    private static let demoTestToken = "ad6c8e4569b7c73cb7d7cbe9696c360a678a6e6e08713b8250bb339c253b3838"
 
     /// Registra al usuario por su nombre y persiste el token devuelto.
     /// - Throws: `APIError` si la petición falla.
