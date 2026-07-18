@@ -77,6 +77,7 @@ struct UnitManagementView: View {
                         Text("\(customUnits.count)/\(UnitDTO.maxCustomCount) unidades a medida")
                     }
                 }
+            .scrollContentBackground(.hidden)
             .scrollDismissesKeyboard(.immediately)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -118,6 +119,7 @@ struct UnitManagementView: View {
             .task { await loadUnits() }
         }
         .presentationDragIndicator(.visible)
+        .presentationBackground(.ultraThinMaterial)
     }
 
     // MARK: - Fila de nueva unidad
