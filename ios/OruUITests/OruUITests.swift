@@ -2,7 +2,7 @@ import XCTest
 
 final class OruUITests: XCTestCase {
 
-    private let app = XCUIApplication()
+    @MainActor private let app = XCUIApplication()
 
     override func setUpWithError() throws {
         continueAfterFailure = false

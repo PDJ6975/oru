@@ -1,6 +1,5 @@
 ios/Oru/docs/
-ios/xcshareddata/
-ios/xcuserdata/
+**/xcuserdata/
 *.xcresult/
 *.log
 build/

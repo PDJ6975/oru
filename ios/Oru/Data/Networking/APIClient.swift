@@ -123,11 +123,10 @@ final class APIClient {
     /// Decoder compartido para las fechas de la API, que llegan en ISO8601.
     private static let decoder: JSONDecoder = {
         let decoder = JSONDecoder()
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let format = Date.ISO8601FormatStyle(includingFractionalSeconds: true)
         decoder.dateDecodingStrategy = .custom { decoder in
             let string = try decoder.singleValueContainer().decode(String.self)
-            guard let date = formatter.date(from: string) else {
+            guard let date = try? format.parse(string) else {
                 throw DecodingError.dataCorrupted(
                     .init(codingPath: decoder.codingPath,
                           debugDescription: "Fecha ISO8601 no válida: \(string)")

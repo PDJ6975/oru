@@ -2,7 +2,7 @@ import AppIntents
 import ActivityKit
 
 struct CancelTimerIntent: LiveActivityIntent {
-    static var title: LocalizedStringResource = "Cancelar sesion"
+    static let title: LocalizedStringResource = "Cancelar sesion"
 
     func perform() async throws -> some IntentResult {
         await MainActor.run {

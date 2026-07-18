@@ -6,7 +6,7 @@ import SwiftUI
 @Observable
 class TimerViewModel {
 
-    enum TimerState {
+    nonisolated enum TimerState {
         case idle, running
     }
 
@@ -37,7 +37,7 @@ class TimerViewModel {
     var canDecrease: Bool { selectedMinutes > Self.minMinutes }
     var canIncrease: Bool { selectedMinutes < Self.maxMinutes }
 
-    private static let logger = Logger(subsystem: "com.antoniorodriguez.Oru2026", category: "LiveActivity")
+    private nonisolated static let logger = Logger(subsystem: "com.antoniorodriguez.Oru2026", category: "LiveActivity")
 
     init(timerService: TimerService) {
         self.timerService = timerService
@@ -145,12 +145,31 @@ class TimerViewModel {
 
     // MARK: - Live Activity
 
+    private nonisolated static func endActivities(
+        content: ActivityContent<OruTimerAttributes.ContentState>?,
+        policy: ActivityUIDismissalPolicy
+    ) async {
+        for activity in Activity<OruTimerAttributes>.activities {
+            await activity.end(content, dismissalPolicy: policy)
+        }
+    }
+
+    private nonisolated static func endActivities(
+        ids: Set<String>,
+        content: ActivityContent<OruTimerAttributes.ContentState>?,
+        policy: ActivityUIDismissalPolicy
+    ) async {
+        for activity in Activity<OruTimerAttributes>.activities where ids.contains(activity.id) {
+            await activity.end(content, dismissalPolicy: policy)
+        }
+    }
+
     private func startLiveActivity(endDate: Date) {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
 
-        // Limpiar actividades residuales (ej. sesión anterior aún visible)
-        for activity in Activity<OruTimerAttributes>.activities {
-            Task { await activity.end(nil, dismissalPolicy: .immediate) }
+        let staleIDs = Set(Activity<OruTimerAttributes>.activities.map(\.id))
+        if !staleIDs.isEmpty {
+            Task { await Self.endActivities(ids: staleIDs, content: nil, policy: .immediate) }
         }
 
         let attributes = OruTimerAttributes(
@@ -180,9 +199,7 @@ class TimerViewModel {
         let policy: ActivityUIDismissalPolicy = immediate
             ? .immediate
             : .after(.now + 180)
-        for activity in Activity<OruTimerAttributes>.activities {
-            await activity.end(content, dismissalPolicy: policy)
-        }
+        await Self.endActivities(content: content, policy: policy)
         currentActivity = nil
     }
 
@@ -201,20 +218,17 @@ class TimerViewModel {
         let current = Activity<OruTimerAttributes>.activities
         if !current.isEmpty {
             Self.logger.notice("endStaleActivities: \(current.count) actividad(es) encontrada(s)")
-            for activity in current {
-                await activity.end(content, dismissalPolicy: .immediate)
-            }
+            await Self.endActivities(content: content, policy: .immediate)
             currentActivity = nil
             return
         }
 
         // Slow path: cold start, el daemon aún no entregó la activity restaurada.
-        // activityUpdates emite cuando la sincronización ocurre.
         Self.logger.notice("endStaleActivities: activities vacío, esperando daemon…")
-        let waitTask = Task { [weak self] in
+        let waitTask = Task.detached { [weak self] in
             for await activity in Activity<OruTimerAttributes>.activityUpdates {
                 // Si arranca una sesión durante la ventana, NO la cerramos.
-                guard let self, self.state == .idle else { continue }
+                guard let self, await self.state == .idle else { continue }
                 Self.logger.notice("endStaleActivities: activity recibida, cerrando…")
                 await activity.end(content, dismissalPolicy: .immediate)
             }
