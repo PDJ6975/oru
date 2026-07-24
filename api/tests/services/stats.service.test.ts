@@ -115,8 +115,8 @@ describe("stats.service · getStats", () => {
 
     expect(last).toBeDefined();
     expect(last!.date).toEqual(today());
-    expect(
-      stats.yearActivity.every((entry) => entry.date <= today()),
-    ).toBe(true);
+    expect(stats.yearActivity.every((entry) => entry.date <= today())).toBe(
+      true,
+    );
   });
 });
