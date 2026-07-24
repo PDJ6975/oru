@@ -145,12 +145,22 @@ private struct OruTipModifier: ViewModifier {
     }
 }
 
+// MARK: - Hero Value
+
+private struct OruHeroValueModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .font(.system(size: 26, weight: .semibold, design: .rounded))
+            .foregroundStyle(Color.oruPrimary)
+    }
+}
+
 // MARK: - Metric Value
 
 private struct OruMetricValueModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
-            .font(.system(size: 18, weight: .semibold, design: .rounded))
+            .font(.system(size: 20, weight: .semibold, design: .rounded))
             .foregroundStyle(.secondary)
     }
 }
@@ -160,8 +170,8 @@ private struct OruMetricValueModifier: ViewModifier {
 private struct OruMetricLabelModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
-            .font(.system(size: 15, weight: .medium, design: .rounded))
-            .foregroundStyle(Color.oruPrimary)
+            .font(.system(size: 11, weight: .medium, design: .rounded))
+            .foregroundStyle(.secondary)
     }
 }
 
@@ -339,6 +349,10 @@ extension View {
 
     func oruTip() -> some View {
         modifier(OruTipModifier())
+    }
+
+    func oruHeroValue() -> some View {
+        modifier(OruHeroValueModifier())
     }
 
     func oruMetricValue() -> some View {

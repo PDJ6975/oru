@@ -1,8 +1,4 @@
-import type {
-  HabitStatsComp,
-  Stats,
-  UserStatsComp,
-} from "../types/stats.types.js";
+import type { HabitStatsComp, UserStatsComp } from "../types/stats.types.js";
 
 // Construye el DTO de respuesta a partir de la forma común (acumulador o lectura de BD
 // normalizada). Los derivados (dailyAverage, score, complianceRate) se calculan aquí,
@@ -10,7 +6,7 @@ import type {
 export const toDtoStats = (
   userStats: UserStatsComp | null,
   habitStats: HabitStatsComp[],
-): Stats => {
+) => {
   return {
     userStats: {
       complianceRate:

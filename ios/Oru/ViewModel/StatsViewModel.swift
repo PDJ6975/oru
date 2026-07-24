@@ -28,6 +28,9 @@ final class StatsViewModel {
     private(set) var habitStats: [HabitStatsDTO] = []
     private(set) var archivedHabitStats: [HabitStatsDTO] = []
 
+    // Serie diaria del mapa anual.
+    private(set) var yearActivity: [DayActivityDTO] = []
+
     // Galería de figuras completadas en el año seleccionado.
     private(set) var completedOrigamis: [CompletedOrigamiDTO] = []
 
@@ -59,7 +62,7 @@ final class StatsViewModel {
         }
     }
 
-    /// Reparte la respuesta en resumen global y hábitos activos/archivados.
+    /// Reparte la respuesta en resumen global, hábitos activos/archivados y serie del mapa.
     private func apply(_ stats: StatsDTO) {
         complianceRate = stats.userStats.complianceRate
         currentStreak = stats.userStats.currentStreak
@@ -70,6 +73,7 @@ final class StatsViewModel {
         // Se preserva el orden por score que entrega el backend.
         habitStats = stats.habitStats.filter { $0.habitStatus == .active }
         archivedHabitStats = stats.habitStats.filter { $0.habitStatus == .archived }
+        yearActivity = stats.yearActivity
     }
 
     private func resetMetrics() {
@@ -80,6 +84,7 @@ final class StatsViewModel {
         perfectDays = 0
         habitStats = []
         archivedHabitStats = []
+        yearActivity = []
         completedOrigamis = []
     }
 }

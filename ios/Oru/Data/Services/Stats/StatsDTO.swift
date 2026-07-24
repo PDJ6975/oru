@@ -1,9 +1,10 @@
 import Foundation
 
-/// Respuesta de `GET /stats`: resumen global del usuario + estadística por hábito.
+/// Respuesta de `GET /stats`: resumen global, estadística por hábito y serie diaria del mapa anual.
 struct StatsDTO: Decodable {
     let userStats: UserStatsDTO
     let habitStats: [HabitStatsDTO]
+    let yearActivity: [DayActivityDTO]
 }
 
 /// Métricas globales del año.
@@ -30,4 +31,11 @@ struct HabitStatsDTO: Decodable, Identifiable {
     let dailyAverage: Double
 
     var id: Int { habitId }
+}
+
+/// Actividad de un día del calendario anual.
+struct DayActivityDTO: Decodable {
+    let date: Date
+    let scheduled: Int
+    let completed: Int
 }

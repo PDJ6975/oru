@@ -98,4 +98,25 @@ describe("stats.service · getStats", () => {
     expect(stats.userStats.perfectDays).toBe(3);
     expect(stats.habitStats[0].currentStreak).toBe(3);
   });
+
+  it("yearActivity es [] si el año pedido es anterior al primer hábito", async () => {
+    await seedHabit(user.userId, { createdAt: day(3) });
+
+    const stats = await statsService.getStats(user.userId, YEAR - 1);
+
+    expect(stats.yearActivity).toEqual([]);
+  });
+
+  it("yearActivity del año en curso termina en hoy y no incluye días futuros", async () => {
+    await seedHabit(user.userId, { createdAt: day(3) });
+
+    const stats = await statsService.getStats(user.userId, YEAR);
+    const last = stats.yearActivity.at(-1);
+
+    expect(last).toBeDefined();
+    expect(last!.date).toEqual(today());
+    expect(
+      stats.yearActivity.every((entry) => entry.date <= today()),
+    ).toBe(true);
+  });
 });

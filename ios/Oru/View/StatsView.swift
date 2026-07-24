@@ -6,6 +6,7 @@ struct StatsView: View {
     @State private var showAllHabits = false
     @State private var showRankingInfo = false
     @State private var showArchivedInfo = false
+    @State private var selectedMetric: String?
     @State private var selectedOrigami: CompletedOrigamiDTO?
 
     private let gridColumns = [
@@ -24,18 +25,13 @@ struct StatsView: View {
                         .oruSectionTitle()
                         .frame(maxWidth: .infinity, alignment: .leading)
 
-                    metricCard(icon: "apple.meditate", label: "Tasa de cumplimiento", value: rateText)
+                    YearHeatmapView(
+                        year: viewModel.selectedYear,
+                        complianceRate: viewModel.complianceRate,
+                        activity: viewModel.yearActivity
+                    )
 
-                    LazyVGrid(columns: gridColumns, spacing: 18) {
-                        metricCard(icon: "flame", label: "Racha actual", value: "\(viewModel.currentStreak) días")
-                        metricCard(icon: "trophy", label: "Mejor racha", value: "\(viewModel.bestStreak) días")
-                        metricCard(
-                            icon: "checkmark.seal",
-                            label: "Hábitos realizados",
-                            value: "\(viewModel.habitsCompleted) hábitos"
-                        )
-                        metricCard(icon: "star", label: "Días perfectos", value: "\(viewModel.perfectDays) días")
-                    }
+                    metricsGrid
 
                     Divider()
                 }
@@ -98,13 +94,81 @@ struct StatsView: View {
 
     // MARK: - Subvistas
 
-    private var rateText: String {
-        let rate = viewModel.complianceRate
-        if rate == 0 { return "0 %" }
-        if rate.truncatingRemainder(dividingBy: 1) == 0 {
-            return "\(Int(rate)) %"
+    /// Métricas del año
+    private var metricsGrid: some View {
+        LazyVGrid(columns: gridColumns, spacing: 12) {
+            metricCard(
+                icon: "flame",
+                value: "\(viewModel.currentStreak)",
+                label: "Racha actual",
+                help: "Días perfectos seguidos que llevas hasta hoy 🔥."
+            )
+            metricCard(
+                icon: "trophy",
+                value: "\(viewModel.bestStreak)",
+                label: "Mejor racha",
+                help: "La racha de días perfectos más larga que has logrado este año 🏆."
+            )
+            metricCard(
+                icon: "checkmark.seal",
+                value: "\(viewModel.habitsCompleted)",
+                label: "Hábitos realizados",
+                help: "Todas las veces que has completado un hábito a lo largo del año ✅."
+            )
+            metricCard(
+                icon: "star",
+                value: "\(viewModel.perfectDays)",
+                label: "Días perfectos",
+                help: "Días en los que completaste todos los hábitos que tenías programados 🌟."
+            )
         }
-        return String(format: "%.1f %%", rate)
+    }
+
+    private func metricCard(icon: String, value: String, label: String, help: String) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon)
+                .font(.system(size: 17))
+                .foregroundStyle(Color.oruPrimary)
+                .frame(width: 22)
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(value)
+                    .oruMetricValue()
+
+                Text(label)
+                    .oruMetricLabel()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+            }
+
+            Spacer(minLength: 4)
+
+            Button { selectedMetric = label } label: {
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundStyle(.secondary)
+            }
+            .accessibilityLabel("Qué mide \(label)")
+            .popover(isPresented: metricPopover(for: label), arrowEdge: .top) {
+                Text(help)
+                    .oruTip()
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(width: 240)
+                    .padding()
+                    .presentationCompactAdaptation(.popover)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 12)
+        .glassEffect(.regular, in: .rect(cornerRadius: 14))
+    }
+
+    private func metricPopover(for label: String) -> Binding<Bool> {
+        Binding(
+            get: { selectedMetric == label },
+            set: { isPresented in if !isPresented { selectedMetric = nil } }
+        )
     }
 
     private var canGoBack: Bool {
@@ -395,23 +459,6 @@ struct StatsView: View {
                 .oruExpandButton()
                 .foregroundStyle(.secondary)
         }
-    }
-
-    private func metricCard(icon: String, label: String, value: String) -> some View {
-        VStack(spacing: 8) {
-            Image(systemName: icon)
-                .font(.system(size: 21))
-                .foregroundStyle(Color.oruPrimary)
-
-            Text(value)
-                .oruMetricValue()
-
-            Text(label)
-                .oruMetricLabel()
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 16)
-        .glassEffect(.regular, in: .rect(cornerRadius: 16))
     }
 }
 

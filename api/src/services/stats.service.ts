@@ -4,8 +4,14 @@ import type {
   Prisma,
   UserStats,
 } from "../generated/prisma/client.js";
+import type { WeekDay } from "../generated/prisma/enums.js";
 import * as statsRepository from "../repositories/stats.repository.js";
-import type { HabitStatsComp, UserStatsComp } from "../types/stats.types.js";
+import type {
+  DayActivityDto,
+  HabitStatsComp,
+  Stats,
+  UserStatsComp,
+} from "../types/stats.types.js";
 import { toDtoStats } from "../utils/stats.mapper.js";
 import { getComplianceForDay } from "../utils/today.compliances.js";
 import { toWeekDay } from "../utils/weekday.js";
@@ -27,10 +33,24 @@ type DbUserMap = Map<number, UserStats>; // year -> fila BD
 
 const habitKey = (habitId: number, year: number) => `${habitId}-${year}`;
 
+const isHabitActiveOn = (habit: HabitWithData, day: Date): boolean => {
+  const createdDay = startOfDay(habit.createdAt);
+  const archivedDay = habit.archivedAt ? startOfDay(habit.archivedAt) : null;
+  return archivedDay
+    ? createdDay <= day && day <= archivedDay
+    : createdDay <= day;
+};
+
+const isHabitScheduledOn = (habit: HabitWithData, weekDay: WeekDay): boolean =>
+  habit.scheduledDays.some((sd) => sd.day === weekDay);
+
 // ── Punto de entrada ────────────────────────────────────────────────────────
 // 1. Consolida los días ya cerrados (hasta ayer) y avanza el puntero.
 // 2. Devuelve las stats del año pedido, con overlay del día de hoy si es el año actual.
-export const getStats = async (userId: number, year: number) => {
+export const getStats = async (
+  userId: number,
+  year: number,
+): Promise<Stats> => {
   const user = await userService.getUserById(userId);
   const today = startOfDay(new Date());
   const yesterday = addDays(today, -1);
@@ -47,8 +67,12 @@ export const getStats = async (userId: number, year: number) => {
     await userService.updateLastComputedDay(userId, yesterday);
   }
 
-  // 2. Construir la respuesta del año pedido
-  return readYear(userId, year, today);
+  // 2. Métricas del año + serie del mapa anual
+  const [summary, yearActivity] = await Promise.all([
+    readYear(userId, year, today),
+    buildYearActivity(userId, year, today),
+  ]);
+  return { ...summary, yearActivity };
 };
 
 // ── Consolidación: calcula la franja y la persiste ───────────────────────────
@@ -123,6 +147,49 @@ const readYear = async (userId: number, year: number, today: Date) => {
   ]);
 };
 
+export const buildYearActivity = async (
+  userId: number,
+  year: number,
+  today: Date,
+): Promise<DayActivityDto[]> => {
+  const yearStart = startOfDay(new Date(year, 0, 1));
+  const yearEnd = startOfDay(new Date(year, 11, 31));
+
+  const earliest = await habitService.getEarliestHabitDate(userId);
+  if (!earliest) return [];
+
+  const from = earliest > yearStart ? earliest : yearStart;
+  const to = today < yearEnd ? today : yearEnd; // nunca incluir días futuros
+  if (from > to) return []; // año anterior al primer hábito
+
+  const habits = await habitService.getUserHabitsWithCompliancesInRange(
+    userId,
+    from,
+    to,
+  );
+
+  const series: DayActivityDto[] = [];
+  for (let day = from; day <= to; day = addDays(day, 1)) {
+    const weekDay = toWeekDay(day);
+    let scheduled = 0;
+    let completed = 0;
+
+    for (const habit of habits) {
+      if (!isHabitActiveOn(habit, day) || !isHabitScheduledOn(habit, weekDay)) {
+        continue;
+      }
+      scheduled++;
+      if (getComplianceForDay(habit.compliances, day)?.isCompleted) {
+        completed++;
+      }
+    }
+
+    series.push({ date: day, scheduled, completed });
+  }
+
+  return series;
+};
+
 // ── Lógica del cálculo: muta los acumuladores con la franja [from, to] ──────
 const accumulateRange = (
   habits: HabitWithData[],
@@ -141,19 +208,10 @@ const accumulateRange = (
     let dayCompleted = 0;
 
     for (const habit of habits) {
-      // Normalizar createdAty y archivedAt porque son fechas completas y today
-      // esta al comienzo del día, por lo que siempre un hábito no contaría como activo, sino como archivado
-      const createdDay = startOfDay(habit.createdAt);
-      const archivedDay = habit.archivedAt
-        ? startOfDay(habit.archivedAt)
-        : null;
-      const isActive = archivedDay
-        ? createdDay <= day && day <= archivedDay
-        : createdDay <= day;
-      const isScheduled = habit.scheduledDays.some((sd) => sd.day === weekDay);
-
       // Si no estaba activo ni programado ese día, no afecta a sus stats
-      if (!isActive || !isScheduled) continue;
+      if (!isHabitActiveOn(habit, day) || !isHabitScheduledOn(habit, weekDay)) {
+        continue;
+      }
 
       dayScheduled++;
       const h = getOrInitHabitStatsAcc(habitStatsAcc, habit, year, dbHabitMap);

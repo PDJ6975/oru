@@ -54,7 +54,15 @@ export interface HabitStatsDto {
   dailyAverage: number;
 }
 
+// Actividad de un día del calendario anual
+export interface DayActivityDto {
+  date: Date;
+  scheduled: number;
+  completed: number;
+}
+
 export interface Stats {
   userStats: UserStatsDto;
   habitStats: HabitStatsDto[];
+  yearActivity: DayActivityDto[];
 }
