@@ -165,16 +165,6 @@ private struct OruMetricValueModifier: ViewModifier {
     }
 }
 
-// MARK: - Metric Label
-
-private struct OruMetricLabelModifier: ViewModifier {
-    func body(content: Content) -> some View {
-        content
-            .font(.system(size: 11, weight: .medium, design: .rounded))
-            .foregroundStyle(.secondary)
-    }
-}
-
 // MARK: - Section Title
 
 private struct OruSectionTitleModifier: ViewModifier {
@@ -357,10 +347,6 @@ extension View {
 
     func oruMetricValue() -> some View {
         modifier(OruMetricValueModifier())
-    }
-
-    func oruMetricLabel() -> some View {
-        modifier(OruMetricLabelModifier())
     }
 
     func oruSectionTitle() -> some View {

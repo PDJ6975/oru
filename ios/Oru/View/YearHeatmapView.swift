@@ -51,7 +51,7 @@ struct YearHeatmapView: View {
                 .oruHeroValue()
 
             Text("de cumplimiento")
-                .oruMetricLabel()
+                .oruTextSecondary()
 
             Spacer(minLength: 0)
         }

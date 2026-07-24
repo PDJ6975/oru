@@ -112,13 +112,13 @@ struct StatsView: View {
             metricCard(
                 icon: "checkmark.seal",
                 value: "\(viewModel.habitsCompleted)",
-                label: "Hábitos realizados",
+                label: "Completados",
                 help: "Todas las veces que has completado un hábito a lo largo del año ✅."
             )
             metricCard(
                 icon: "star",
                 value: "\(viewModel.perfectDays)",
-                label: "Días perfectos",
+                label: "Perfectos",
                 help: "Días en los que completaste todos los hábitos que tenías programados 🌟."
             )
         }
@@ -136,9 +136,8 @@ struct StatsView: View {
                     .oruMetricValue()
 
                 Text(label)
-                    .oruMetricLabel()
+                    .oruTextSecondary()
                     .lineLimit(1)
-                    .minimumScaleFactor(0.85)
             }
 
             Spacer(minLength: 4)
